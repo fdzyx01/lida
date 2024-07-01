@@ -1,5 +1,6 @@
 import json
 import logging
+import os.path
 from typing import Union
 import pandas as pd
 from lida.utils import clean_code_snippet, read_dataframe
@@ -154,6 +155,6 @@ class Summarizer():
             }
 
         data_summary["field_names"] = data.columns.tolist()
-        data_summary["file_name"] = file_name
-
+        data_summary["file_name"] = os.path.split(file_name)[-1]
+        print(data_summary["file_name"])
         return data_summary

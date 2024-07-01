@@ -92,6 +92,7 @@ class ChartExecutor:
         summary: Summary,
         library="altair",
         return_error: bool = False,
+        export_svg: bool = False
     ) -> Any:
         """Validate and convert code"""
 
@@ -108,6 +109,8 @@ class ChartExecutor:
         code_spec_copy = code_specs.copy()
         code_specs = [preprocess_code(code) for code in code_specs]
         if library == "altair":
+            if export_svg:
+                raise Exception("不支持导出svg")
             for code in code_specs:
                 try:
                     ex_locals = get_globals_dict(code, data)
@@ -166,9 +169,16 @@ class ChartExecutor:
                         #     print("Warning: tight_layout encountered an error. The layout may not be optimal.")
                         #     pass
 
-                        plt.savefig(buf, format="png", dpi=100, pad_inches=0.2)
-                        buf.seek(0)
-                        plot_data = base64.b64encode(buf.read()).decode("ascii")
+                        if not export_svg:
+                            plt.savefig(buf, format="png", dpi=100, pad_inches=0.2)
+                            buf.seek(0)
+                            plot_data = base64.b64encode(buf.read()).decode("ascii")
+                        else:
+                            plt.savefig(buf, format="svg")
+                            plt.savefig("./1.svg")
+                            print("save")
+                            buf.seek(0)
+                            plot_data = buf.read().decode("ascii")
                         plt.close()
                     charts.append(
                         ChartExecutorResponse(
@@ -199,6 +209,8 @@ class ChartExecutor:
                         )
             return charts
         elif library == "ggplot":
+            if export_svg:
+                raise Exception("不支持导出svg")
             # print colum dtypes
             for code in code_specs:
                 try:

@@ -29,8 +29,12 @@ class GoalExplorer():
         pass
 
     def generate(self, summary: dict, textgen_config: TextGenerationConfig,
-                 text_gen: TextGenerator, n=5, persona: Persona = None) -> list[Goal]:
+                 text_gen: TextGenerator, n=5, persona: Persona = None, hint : str = "") -> list[Goal]:
         """Generate goals given a summary of data"""
+
+
+
+        n = 20
 
         user_prompt = f"""The number of GOALS to generate is {n}. The goals should be based on the data summary below, \n\n .
         {summary} \n\n"""
@@ -38,9 +42,15 @@ class GoalExplorer():
         if not persona:
             persona = Persona(
                 persona="A highly skilled data analyst who can come up with complex, insightful goals about data",
-                rationale="")
+                rationale="", extra_hint_interest="")
+        if hint:
+            persona.extra_hint_interest = hint
 
-        user_prompt += f"""\n The generated goals SHOULD BE FOCUSED ON THE INTERESTS AND PERSPECTIVE of a '{persona.persona} persona, who is insterested in complex, insightful goals about the data. \n"""
+        user_prompt += f"""\n The generated goals SHOULD BE FOCUSED ON THE INTERESTS {'SECTION' if persona.extra_hint_interest else ""}AND PERSPECTIVE of a '{persona.persona} persona, who is insterested in complex, insightful goals about the data. \n"""
+
+        # give extra interest
+        if persona.extra_hint_interest:
+            user_prompt += f"\n\n INTERESTS: {persona.extra_hint_interest}"
 
         messages = [
             {"role": "system", "content": SYSTEM_INSTRUCTIONS},

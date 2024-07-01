@@ -8,7 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import traceback
 
 from llmx import llm, providers
-from ..datamodel import GoalWebRequest, SummaryUrlRequest, TextGenerationConfig, UploadUrl, VisualizeEditWebRequest, VisualizeEvalWebRequest, VisualizeExplainWebRequest, VisualizeRecommendRequest, VisualizeRepairWebRequest, VisualizeWebRequest, InfographicsRequest
+from ..datamodel import GoalWebRequest, SummaryUrlRequest, TextGenerationConfig, UploadUrl, VisualizeEditWebRequest, \
+    VisualizeEvalWebRequest, VisualizeExplainWebRequest, VisualizeRecommendRequest, VisualizeRepairWebRequest, \
+    VisualizeWebRequest, InfographicsRequest, VisualizeConclusionRequest
 from ..components import Manager
 
 
@@ -188,6 +190,36 @@ async def recommend_visualization(req: VisualizeRecommendRequest) -> dict:
                 "message": f"Error generating visualization recommendation."}
 
 
+@api.post("/visualize/conclusion")
+async def conclusion_visualization(req: VisualizeConclusionRequest) -> dict:
+    """Given a dataset summary, generate a visualization recommendations"""
+
+    try:
+        textgen_config = req.textgen_config if req.textgen_config else TextGenerationConfig()
+        charts = lida.conclusion(
+            summary=req.summary,
+            code=req.code,
+            goal=req.goal,
+            hint=req.hint,
+            library=req.library,
+            textgen_config=textgen_config
+        )
+
+        if len(charts) == 0:
+            return {"status": False, "message": "No charts generated"}
+        return {"status": True, "charts": charts,
+                "message": "Successfully generated chart conclusion"}
+
+    except Exception as exception_error:
+        logger.error(f"Error generating visualization conclusion: {str(exception_error)}")
+
+        import traceback
+        traceback.print_exception(exception_error)
+        return {"status": False,
+                "message": f"Error generating visualization conclusion."}
+
+
+
 @api.post("/text/generate")
 async def generate_text(textgen_config: TextGenerationConfig) -> dict:
     """Generate text given some prompt"""
@@ -205,7 +237,7 @@ async def generate_goal(req: GoalWebRequest) -> dict:
     """Generate goals given a dataset summary"""
     try:
         textgen_config = req.textgen_config if req.textgen_config else TextGenerationConfig()
-        goals = lida.goals(req.summary, n=req.n, textgen_config=textgen_config)
+        goals = lida.goals(req.summary, n=req.n, textgen_config=textgen_config, hint=req.extra_hint_interest)
         return {"status": True, "data": goals,
                 "message": f"Successfully generated {len(goals)} goals"}
     except Exception as exception_error:

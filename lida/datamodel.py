@@ -89,6 +89,8 @@ class Persona:
     persona: str
     rationale: str
 
+    extra_hint_interest: str
+
     def _repr_markdown_(self):
         return f"""
 ### Persona
@@ -108,6 +110,7 @@ class GoalWebRequest:
     textgen_config: Optional[TextGenerationConfig] = field(
         default_factory=TextGenerationConfig
     )
+    extra_hint_interest: str = ""
     n: int = 5
 
 
@@ -134,6 +137,17 @@ class VisualizeRecommendRequest:
         default_factory=TextGenerationConfig
     )
 
+
+@dataclass
+class VisualizeConclusionRequest:
+    """A Visualize Conclusion Request"""
+
+    summary: Summary
+    goal: Goal
+    code: str
+    hint: str = ""
+    library: str = "seaborn"
+    textgen_config: Optional[TextGenerationConfig] = field(default_factory=TextGenerationConfig)
 
 @dataclass
 class VisualizeEditWebRequest:
