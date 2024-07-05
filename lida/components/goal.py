@@ -33,7 +33,7 @@ class GoalExplorer():
         """Generate goals given a summary of data"""
 
 
-
+        # 临时强制修改生成目标数为20
         n = 20
 
         user_prompt = f"""The number of GOALS to generate is {n}. The goals should be based on the data summary below, \n\n .
