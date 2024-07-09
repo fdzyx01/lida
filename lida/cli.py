@@ -5,7 +5,7 @@ from typing_extensions import Annotated
 from llmx import providers
 
 # from lida.web.backend.app import launch
-
+print(os.environ["OPENAI_API_KEY"])
 app = typer.Typer()
 
 

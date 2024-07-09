@@ -11,7 +11,7 @@ import logging
 
 import pandas as pd
 from llmx import llm, TextGenerator
-from lida.datamodel import Goal, Summary, TextGenerationConfig, Persona, ChartExecutorResponse
+from lida.datamodel import Goal, Summary, TextGenerationConfig, Persona, ChartExecutorResponse, DescribeData
 from lida.utils import read_dataframe
 from .viz.vizconductor import VizConductor
 from ..components.summarizer import Summarizer
@@ -111,6 +111,7 @@ class Manager(object):
             file_name="",
             n_samples: int = 3,
             summary_method: str = "default",
+            summary_hint: DescribeData = DescribeData(),
             textgen_config: TextGenerationConfig = TextGenerationConfig(n=1, temperature=0),
     ) -> Summary:
         """
@@ -166,7 +167,7 @@ class Manager(object):
         self.data = data
         return self.summarizer.summarize(
             data=self.data, text_gen=self.text_gen, file_name=file_name, n_samples=n_samples,
-            summary_method=summary_method, textgen_config=textgen_config)
+            summary_method=summary_method, summary_hint=summary_hint, textgen_config=textgen_config)
 
     def goals(
             self,

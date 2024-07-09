@@ -1,24 +1,27 @@
 import json
 import os
 import logging
+from json import JSONDecodeError
+from typing import Dict
+
 import requests
-from fastapi import FastAPI, UploadFile
+from fastapi import FastAPI, UploadFile, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import traceback
 
 from llmx import llm, providers
+from pydantic import BaseModel
+
 from ..datamodel import GoalWebRequest, SummaryUrlRequest, TextGenerationConfig, UploadUrl, VisualizeEditWebRequest, \
     VisualizeEvalWebRequest, VisualizeExplainWebRequest, VisualizeRecommendRequest, VisualizeRepairWebRequest, \
-    VisualizeWebRequest, InfographicsRequest, VisualizeConclusionRequest
+    VisualizeWebRequest, InfographicsRequest, VisualizeConclusionRequest, DescribeData
 from ..components import Manager
-
 
 # instantiate model and generator
 textgen = llm()
 logger = logging.getLogger("lida")
 api_docs = os.environ.get("LIDA_API_DOCS", "False") == "True"
-
 
 lida = Manager(text_gen=textgen)
 app = FastAPI()
@@ -33,7 +36,6 @@ app.add_middleware(
 api = FastAPI(root_path="/api", docs_url="/docs" if api_docs else None, redoc_url=None)
 app.mount("/api", api)
 
-
 root_file_path = os.path.dirname(os.path.abspath(__file__))
 static_folder_root = os.path.join(root_file_path, "ui")
 files_static_root = os.path.join(root_file_path, "files/")
@@ -41,7 +43,6 @@ data_folder = os.path.join(root_file_path, "files/data")
 os.makedirs(data_folder, exist_ok=True)
 os.makedirs(files_static_root, exist_ok=True)
 os.makedirs(static_folder_root, exist_ok=True)
-
 
 # mount lida front end UI files
 app.mount("/", StaticFiles(directory=static_folder_root, html=True), name="ui")
@@ -219,7 +220,6 @@ async def conclusion_visualization(req: VisualizeConclusionRequest) -> dict:
                 "message": f"Error generating visualization conclusion."}
 
 
-
 @api.post("/text/generate")
 async def generate_text(textgen_config: TextGenerationConfig) -> dict:
     """Generate text given some prompt"""
@@ -257,13 +257,24 @@ async def generate_goal(req: GoalWebRequest) -> dict:
 
 
 @api.post("/summarize")
-async def upload_file(file: UploadFile):
+async def upload_file(file: UploadFile = Form(...), data: str = Form(...)) -> dict:
+    try:
+        json_data = json.loads(data)
+        data: DescribeData = DescribeData(**json_data)
+    except JSONDecodeError:
+        return {"status": False,
+                "message": f"Data type not matched. {DescribeData.__dict__}"}
+    print(file.filename)
+    print(data)
+    # return {}
+
     """ Upload a file and return a summary of the data """
     # allow csv, excel, json
     allowed_types = ["text/csv", "application/vnd.ms-excel", "application/json"]
 
     # print("file: ", file)
     # check file type
+
     if file.content_type not in allowed_types:
         return {"status": False,
                 "message": f"Uploaded file type ({file.content_type}) not allowed. Allowed types are: csv, excel, json"}
@@ -278,12 +289,19 @@ async def upload_file(file: UploadFile):
 
         # summarize
         textgen_config = TextGenerationConfig(n=1, temperature=0)
-        summary = lida.summarize(
+        summary, unused_hint = lida.summarize(
             data=file_location,
             file_name=file.filename,
             summary_method="llm",
+            summary_hint=data,
             textgen_config=textgen_config)
-        return {"status": True, "summary": summary, "data_filename": file.filename}
+        ret = {"status": True, "summary": summary, "data_filename": file.filename}
+        if unused_hint:
+            ret["warning"] = {
+                "message": ",".join(unused_hint) + " fields description unmatched. ",
+                "data": unused_hint
+            }
+        return ret
     except Exception as exception_error:
         logger.error(f"Error processing file: {str(exception_error)}")
         return {"status": False, "message": f"Error processing file."}
@@ -315,6 +333,7 @@ async def upload_file_via_url(req: SummaryUrlRequest) -> dict:
         logger.error(f"Error processing file: {str(exception_error)}")
         return {"status": False, "message": f"Error processing file."}
 
+
 # convert image to infographics
 
 
@@ -333,6 +352,7 @@ async def generate_infographics(req: InfographicsRequest) -> dict:
         logger.error(f"Error generating infographics: {str(exception_error)}")
         return {"status": False,
                 "message": f"Error generating infographics. {str(exception_error)}"}
+
 
 # list supported models
 

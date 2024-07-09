@@ -50,6 +50,10 @@ class Goal:
 **Rationale:** {self.rationale}
 """
 
+@dataclass
+class DescribeData:
+    description: str = ""
+    fields: Dict[str, str] = field(default_factory=dict)
 
 @dataclass
 class Summary:
@@ -60,6 +64,7 @@ class Summary:
     dataset_description: str
     field_names: List[Any]
     fields: Optional[List[Any]] = None
+
 
     def _repr_markdown_(self):
         field_lines = "\n".join([f"- **{name}:** {field}" for name,
