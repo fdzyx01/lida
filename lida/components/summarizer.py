@@ -10,9 +10,9 @@ import warnings
 
 system_prompt = """
 You are an experienced data analyst that can annotate datasets. Your instructions are as follows:
-i) ALWAYS generate the name of the dataset and the dataset_description
-ii) ALWAYS generate a field description.
-iii.) ALWAYS generate a semantic_type (a single word) for each field given its values e.g. company, city, number, supplier, location, gender, longitude, latitude, url, ip address, zip code, email, etc
+i) ALWAYS generate the name of the dataset and the dataset_description, where are in the "name" and "dataset_description" field. IF IT IS EMPTY STRING, YOU MUST REPLACE IT. DO NOT DIRECTLY USE THE FILE NAME, YOU MUST GENERATE A PROPER TITLE AS DATASET NAME.
+ii) ALWAYS generate EVERY field's description, where are in the "fields[i]['properties']['description']" field. IF IT IS EMPTY STRING, YOU MUST REPLACE IT.
+iii) ALWAYS generate a semantic_type (a single word) for each field given its values e.g. company, city, number, supplier, location, gender, longitude, latitude, url, ip address, zip code, email, etc
 You must return an updated JSON dictionary without any preamble or explanation.
 """
 
@@ -118,6 +118,7 @@ class Summarizer():
         try:
             json_string = clean_code_snippet(response.text[0]["content"])
             enriched_summary = json.loads(json_string)
+            print(enriched_summary)
         except json.decoder.JSONDecodeError:
             error_msg = f"The model did not return a valid JSON object while attempting to generate an enriched data summary. Consider using a default summary or  a larger model with higher max token length. | {response.text[0]['content']}"
             logger.info(error_msg)
