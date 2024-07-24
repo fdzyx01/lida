@@ -169,6 +169,11 @@ class Manager(object):
             data=self.data, text_gen=self.text_gen, file_name=file_name, n_samples=n_samples,
             summary_method=summary_method, summary_hint=summary_hint, textgen_config=textgen_config)
 
+    def open_data(self, data: Union[pd.DataFrame, str]):
+        if isinstance(data, str):
+            data = read_dataframe(data)
+        self.data = data
+
     def goals(
             self,
             summary: Summary,
@@ -252,6 +257,22 @@ class Manager(object):
         )
         return charts
 
+    def vis(
+            self,
+            summary,
+            code_specs: List[str],
+            library="seaborn",
+            return_error: bool = False,
+    ):
+        charts = self.execute(
+            code_specs=code_specs,
+            data=self.data,
+            summary=summary,
+            library=library,
+            return_error=return_error,
+        )
+        return charts
+
     def execute(
             self,
             code_specs,
@@ -259,7 +280,7 @@ class Manager(object):
             summary: Summary,
             library: str = "seaborn",
             return_error: bool = False,
-            export_svg = False
+            export_svg=False
     ) -> List[ChartExecutorResponse]:
 
         if data is None:

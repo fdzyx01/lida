@@ -117,6 +117,7 @@ class GoalWebRequest:
     )
     extra_hint_interest: str = ""
     n: int = 5
+    chat_id: str = ""
 
 
 @dataclass
@@ -129,6 +130,7 @@ class VisualizeWebRequest:
     textgen_config: Optional[TextGenerationConfig] = field(
         default_factory=TextGenerationConfig
     )
+    chat_id: str = ""
 
 
 @dataclass
@@ -158,6 +160,8 @@ class VisualizeConclusionRequest:
 class VisualizeEditWebRequest:
     """A Visualize Edit Web Request"""
 
+    chat_id: str
+    goal_id: str
     summary: Summary
     code: str
     instructions: Union[str, List[str]]
@@ -185,6 +189,8 @@ class VisualizeRepairWebRequest:
 class VisualizeExplainWebRequest:
     """A Visualize Explain Web Request"""
 
+    chat_id: str
+    goal_id: str
     code: str
     library: str = "seaborn"
     textgen_config: Optional[TextGenerationConfig] = field(
@@ -196,6 +202,7 @@ class VisualizeExplainWebRequest:
 class VisualizeEvalWebRequest:
     """A Visualize Eval Web Request"""
 
+    chat_id: str
     code: str
     goal: Goal
     library: str = "seaborn"
@@ -251,3 +258,19 @@ class InfographicsRequest:
     n: int = 1
     style_prompt: Union[str, List[str]] = ""
     # return_pil: bool = False
+
+
+@dataclass
+class UserCreate:
+    """A request for register"""
+
+    username: str
+    password: str
+
+
+@dataclass
+class VisWebRequest:
+    """A Visualize Web Request"""
+
+    summary: Summary
+    goal_id: str
