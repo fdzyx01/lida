@@ -1,7 +1,6 @@
 output/
 .vscode
 frontend
-notebooks/test_single.ipynb
 notebooks/experimental/*   
 .azure
 .release.sh
@@ -15,9 +14,7 @@ examples/experiment_results.json
 examples/data
 data  
 .DS_Store
-test.py
 experiments/data
-test.py
 .azure
 
 # Byte-compiled / optimized / DLL files
