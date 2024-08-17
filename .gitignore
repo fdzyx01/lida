@@ -1,7 +1,7 @@
 output/
 .vscode
 frontend
-notebooks/test.ipynb
+notebooks/test_single.ipynb
 notebooks/experimental/*   
 .azure
 .release.sh

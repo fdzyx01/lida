@@ -259,11 +259,13 @@ async def generate_goal(req: GoalWebRequest) -> dict:
 @api.post("/summarize")
 async def upload_file(file: UploadFile = Form(...), data: str = Form(...)) -> dict:
     try:
+        # print(data)
         json_data = json.loads(data)
+        # print(json_data)
         data: DescribeData = DescribeData(**json_data)
     except JSONDecodeError:
         return {"status": False,
-                "message": f"Data type not matched. {DescribeData.__dict__}"}
+                "message": f"Data type not matched. {DescribeData}"}
     print(file.filename)
     print(data)
     # return {}
@@ -271,11 +273,12 @@ async def upload_file(file: UploadFile = Form(...), data: str = Form(...)) -> di
     """ Upload a file and return a summary of the data """
     # allow csv, excel, json
     allowed_types = ["text/csv", "application/vnd.ms-excel", "application/json"]
-
+    allowed_types_ext = ["csv", "xls", "xlsx", "json"]
     # print("file: ", file)
     # check file type
+    print(file)
 
-    if file.content_type not in allowed_types:
+    if file.content_type not in allowed_types and file.filename.split(".")[-1] not in allowed_types_ext:
         return {"status": False,
                 "message": f"Uploaded file type ({file.content_type}) not allowed. Allowed types are: csv, excel, json"}
 
