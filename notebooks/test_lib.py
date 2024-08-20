@@ -36,11 +36,13 @@ def parse_goal(goals):
     return [str(p["index"]) + ". " + p["question"] for p in goals]
 
 
-def summary_and_goals(filename, hint=""):
+def summary_and_goals(filename, hint="", description="", fields=dict()):
     # %%
+    if fields is None:
+        fields = {}
     summary = req(uri="summarize", data={
-        "description": "",
-        "fields": {}
+        "description": description,
+        "fields": fields
     }, file=open(filename))["summary"]
 
     # %%
@@ -66,6 +68,7 @@ def visu_and_conclusion(summary, goal):
             "textgen_config": text_gen_config
         }
     )
+    print(visu)
     base64_data = visu["charts"][0]["raster"]
     conclusion = req(
         uri="visualize/conclusion",
@@ -92,7 +95,7 @@ html_goals_head = '''
 <h2>goal</h2>
 '''
 html_goals_item = '''
-<p>{goal}</p>
+<p style="{style}">{goal}</p>
 '''
 html_back = '''</body></html>'''
 html_template = '''<div>
@@ -108,10 +111,15 @@ def build_test_file(filename):
     f.write(html_head.format(filename=filename))
     return f
 
-def add_goals_to_file(f, goals):
+def add_goals_to_file(f, goals, targets=[]):
+
     f.write(html_goals_head)
-    for i in goals:
-        f.write(html_goals_item.format(goal=i))
+    for index, i in enumerate(goals):
+        style = ""
+        if index in targets:
+            style = "color: red"
+        d = html_goals_item.format(goal=i, style=style)
+        f.write(d)
 
 def add_test_file(f, ques, md, img):
     f.write(html_template.format(ques=ques, md=md, img=img, time=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
