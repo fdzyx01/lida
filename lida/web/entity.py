@@ -1,10 +1,9 @@
 from sqlalchemy import create_engine, Column, String, BigInteger, Date, JSON, Integer, Text, event, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, declared_attr
-import uuid
 from datetime import datetime
-
-DATABASE_URL = "mysql+pymysql://root:ICPC2021spring.@localhost/lida"
+from lida.config import DATABASE_URL
+import uuid
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

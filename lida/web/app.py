@@ -25,9 +25,12 @@ from ..datamodel import GoalWebRequest, SummaryUrlRequest, TextGenerationConfig,
     VisualizeEvalWebRequest, VisualizeExplainWebRequest, VisualizeRecommendRequest, VisualizeRepairWebRequest, \
     VisualizeWebRequest, InfographicsRequest, VisualizeConclusionRequest, DescribeData, UserCreate, VisWebRequest
 from ..components import Manager
+from lida.ollamaTextGenerator import OllamaTextGenerator
 
 # instantiate model and generator
-textgen = llm()
+# textgen = llm()
+# 这里设置固定为ollama了
+textgen = OllamaTextGenerator()
 logger = logging.getLogger("lida")
 api_docs = os.environ.get("LIDA_API_DOCS", "False") == "True"
 
