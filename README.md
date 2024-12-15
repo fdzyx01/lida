@@ -46,22 +46,12 @@ charts = lida.visualize(summary=summary, goal=goals[0]) # exploratory data analy
 Setup and verify that your python environment is **`python 3.10`** or higher (preferably, use [Conda](https://docs.conda.io/en/main/miniconda.html#installing)). Install the library via pip.
 
 ```bash
-pip install -U lida 
+pip install -r lida/requirements.txt
+
+# Modify the configuration information in lida/config.py
+# Then execute the following command to start
+uvicorn lida.web.app:app --reload --host 127.0.0.1 --port 8080
 ```
-
-LIDA depends on `llmx` and `openai`. If you had these libraries installed previously, consider updating them.
-
-```bash
-pip install -U llmx openai
-```
-
-Once requirements are met, setup your api key. Learn more about setting up keys for other LLM providers [here](https://github.com/victordibia/llmx).
-
-```bash
-export OPENAI_API_KEY=<your key>
-```
-
-Alternatively you can install the library in dev model by cloning this repo and running `pip install -e .` in the repository root.
 
 ## Web API and UI
 
