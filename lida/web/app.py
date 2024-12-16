@@ -17,7 +17,7 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from .auth import authenticate_user, ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token, create_user, get_current_user
-from .entity import SessionLocal, Chat, Goal, Explain, Evaluate, Edit, User
+from .entity import SessionLocal, Chat, Goal, Explain, Evaluate, Edit, User, Recommend
 from pydantic import BaseModel
 
 from .models import Token
@@ -275,10 +275,17 @@ async def evaluate_visualization(req: VisualizeEvalWebRequest,
 
 
 @api.post("/visualize/recommend")
-async def recommend_visualization(req: VisualizeRecommendRequest) -> dict:
+async def recommend_visualization(req: VisualizeRecommendRequest,
+                                  db: Session = Depends(get_db),
+                                  current_user: User = Depends(get_current_user)) -> dict:
     """Given a dataset summary, generate a visualization recommendations"""
 
     try:
+        db_goal = db.query(Goal).filter(Goal.chat_id == req.chat_id, Goal.id == req.goal_id).first()
+        if db_goal is None:
+            return {"status": False,
+                    "message": "Goal not found with the given chat_id and question"}
+
         textgen_config = req.textgen_config if req.textgen_config else TextGenerationConfig()
         charts = lida.recommend(
             summary=req.summary,
@@ -289,6 +296,15 @@ async def recommend_visualization(req: VisualizeRecommendRequest) -> dict:
 
         if len(charts) == 0:
             return {"status": False, "message": "No charts generated"}
+
+        # save to database
+        db.query(Recommend).filter(Recommend.goal_id == req.goal_id).delete()
+        for chart in charts:
+            db_recommend = Recommend(goal_id=req.goal_id,
+                                     code=chart["code"])
+            db.add(db_recommend)
+        db.commit()
+
         return {"status": True, "charts": charts,
                 "message": "Successfully generated chart recommendation"}
 
@@ -353,6 +369,7 @@ async def generate_goal(req: GoalWebRequest,
         goals = lida.goals(req.summary, n=req.n, textgen_config=textgen_config, hint=req.extra_hint_interest)
 
         # save to database
+        db.query(Goal).filter(Goal.chat_id == req.chat_id).delete()
         db_chat.extra_hint_interest = req.extra_hint_interest
         for goal in goals:
             db_goal = Goal(chat_id=req.chat_id,
@@ -577,18 +594,29 @@ async def get_chat_info(req: VisWebRequest,
     instructions = [{"index": edit.index,
                      "edit": edit.edit} for edit in edits]
 
-    exp = eva = None
+    exp = eva = rec = None
     explain = db.query(Explain).filter(Explain.goal_id == goal.id).first()
     evaluate = db.query(Evaluate).filter(Evaluate.goal_id == goal.id).first()
+    recommends = db.query(Recommend).filter(Recommend.goal_id == goal.id).all()
+
     if explain:
         exp = explain.explanation["explanations"]
     if evaluate:
         eva = evaluate.evaluate["evaluations"]
+    if recommends:
+        recommend_code_specs = [recommend.code for recommend in recommends]
+        rec = lida.vis(
+            code_specs=recommend_code_specs,
+            summary=req.summary,
+            library=goal.library,
+            return_error=True,
+        )
 
     return {"status": True, "charts": charts,
             "instructions": instructions,
             "explanations": exp,
             "evaluations": eva,
+            "recommend": rec,
             "message": "Successfully get chatInfo!"}
 
 

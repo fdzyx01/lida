@@ -86,6 +86,14 @@ class Evaluate(TimestampMixin, Base):
     evaluate = Column(JSON, nullable=True)
 
 
+class Recommend(TimestampMixin, Base):
+    __tablename__ = "t_recommend"
+
+    id = Column(BigInteger, primary_key=True, index=True, nullable=False, default=generate_unique_id)
+    goal_id = Column(BigInteger, nullable=True)
+    code = Column(Text, nullable=True)
+
+
 class User(TimestampMixin, Base):
     __tablename__ = "users"
 

@@ -137,6 +137,8 @@ class VisualizeWebRequest:
 class VisualizeRecommendRequest:
     """A Visualize Recommendation Request"""
 
+    chat_id: str
+    goal_id: str
     summary: Summary
     code: str
     library: str = "seaborn"
