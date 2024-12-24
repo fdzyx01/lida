@@ -109,7 +109,7 @@ async def visualize_data(req: VisualizeWebRequest,
 
         return {"status": True, "charts": charts,
                 "message": "Successfully generated charts.",
-                "goal_id": db_goal.id}
+                "goal_id": f"{db_goal.id}"}
 
     except Exception as exception_error:
         logger.error(f"Error generating visualization goals: {str(exception_error)}")
@@ -467,7 +467,7 @@ async def upload_file(file: UploadFile = Form(...),
         db.refresh(db_chat)
 
         ret = {"status": True, "summary": summary, "data_filename": file.filename,
-               "chat_id": db_chat.id}
+               "chat_id": f"{db_chat.id}"}
         if unused_hint:
             ret["warning"] = {
                 "message": ",".join(unused_hint) + " fields description unmatched. ",
@@ -568,7 +568,7 @@ def get_chat_info(chat_id: str,
                   "visualization": goal.visualization,
                   "rationale": goal.rationale,
                   "is_auto": goal.is_auto,
-                  "id": goal.id} for goal in goals]
+                  "id": f"{goal.id}"} for goal in goals]
 
     return {"status": True, "summary": summary,
             "data": goal_list, "message": "Successfully get chatInfo!"}
