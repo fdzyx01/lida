@@ -142,6 +142,11 @@ CREATE TABLE `t_recommend` (
   `update_time` datetime DEFAULT NULL,
   PRIMARY KEY (`id`));
 
+
+ALTER TABLE `t_chat`
+CHANGE COLUMN `dataset_description` `dataset_description` VARCHAR(510) NULL DEFAULT NULL ,
+CHANGE COLUMN `extra_hint_interest` `extra_hint_interest` VARCHAR(510) NULL DEFAULT NULL ;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
