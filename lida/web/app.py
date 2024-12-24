@@ -537,7 +537,7 @@ def list_models() -> dict:
 @api.get("/getChatList")
 def get_chats(skip: int = 0, limit: int = 10, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> dict:
     chats = db.query(Chat).filter(Chat.user_id == current_user.id).offset(skip).limit(limit).all()
-    chat_list = [{"id": chat.id,
+    chat_list = [{"id": f"{chat.id}",
                   "name": chat.name,
                   "create_time": chat.create_time,
                   "update_time": chat.update_time} for chat in chats]
