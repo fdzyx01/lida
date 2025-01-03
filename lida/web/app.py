@@ -747,7 +747,53 @@ def get_task_by_name(
             "message": f"Error fetching tasks. {exception_error}"
         }
 
+# 根据chat_id查询最新的一条goals表中的记录
+@api.get("/goals/getLatestIdByChatId", response_model=dict)
+def get_latest_id_by_chat_id(
+    chat_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    """Retrieve the latest goal ID filtered by chat ID."""
+    
+    try:
+        # 查询与 chat_id 匹配的最新记录的 id
+        latest_goal = (
+            db.query(Goal)
+            .filter(Goal.chat_id == chat_id)
+            .order_by(Goal.update_time.desc())  # 或者使用 create_time.desc()
+            .first()
+        )
+        
+        if not latest_goal:
+            return {"status": False, "message": "No goals found for the given chat ID."}
 
+        # 返回包含状态、单个目标记录和消息的字典
+        return {
+            "status": True,
+            "goal": {
+                "id": latest_goal.id,
+                "chat_id": latest_goal.chat_id,
+                "index": latest_goal.index,
+                "question": latest_goal.question,
+                "visualization": latest_goal.visualization,
+                "rationale": latest_goal.rationale,
+                "is_auto": bool(latest_goal.is_auto),  # Assuming is_auto is stored as integer in the database
+                "library": latest_goal.library,
+                "code": latest_goal.code,
+                "explanation": latest_goal.explanation,
+                "create_time": latest_goal.create_time.isoformat() if latest_goal.create_time else None,
+                "update_time": latest_goal.update_time.isoformat() if latest_goal.update_time else None
+            },
+            "message": "Successfully retrieved the latest goal!"
+        }
+
+    except Exception as exception_error:
+        logging.error(f"Error fetching latest goal: {str(exception_error)}")
+        return {
+            "status": False,
+            "message": f"Error fetching latest goal.{exception_error}"
+        }
 # 登录获取令牌
 @api.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)) -> dict:
