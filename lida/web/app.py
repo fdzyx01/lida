@@ -701,7 +701,51 @@ def get_all_tasks(
         }
     
 
-# 查询单个任务
+# 根据名字查询任务
+@api.get("/tasks/getName", response_model=dict)
+def get_task_by_name(
+    task_name: str,
+    skip: int = Query(0, description="Skip number of tasks"),
+    limit: int = Query(10, description="Number of tasks to return"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    """Retrieve a list of all tasks with pagination."""
+    
+    try:
+
+        # 构建查询基础
+        query = db.query(TaskManagement)
+
+        # 如果提供了 task_name 参数，则应用过滤
+        if task_name:
+            query = query.filter(TaskManagement.task_name.ilike(f"%{task_name}%"))
+
+        # 应用分页参数
+        paginated_tasks = query.offset(skip).limit(limit).all()
+        
+        # 构建任务列表，确保使用正确的属性名
+        task_list = [
+            {
+                "task_id": task.task_id,  # 使用正确的属性名 task_id
+                "task_name": task.task_name,
+                "task_details": task.task_details,
+                "chat_id": task.chat_id,
+                "created_at": task.created_at,
+                "updated_at": task.updated_at
+            } 
+            for task in paginated_tasks
+        ]
+
+        # 返回包含状态、任务列表和消息的字典
+        return {"status": True, "tasks": task_list, "message": "Successfully listed name tasks!"}
+
+    except Exception as exception_error:
+        logging.error(f"Error fetching tasks: {str(exception_error)}")
+        return {
+            "status": False,
+            "message": f"Error fetching tasks. {exception_error}"
+        }
 
 
 # 登录获取令牌

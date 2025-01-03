@@ -113,7 +113,7 @@ class TaskManagement(Base):
     chat_id = Column(String(255), nullable=True, comment='ChatID')
 
 # 新增 JsonDataStorage 模型
-class JsonDataStorage(TimestampMixin, Base):
+class JsonDataStorage(Base):
     __tablename__ = "json_data_storage"
 
     id = Column(Integer, primary_key=True, autoincrement=True, comment='唯一ID')
