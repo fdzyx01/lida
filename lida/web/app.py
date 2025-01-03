@@ -1,12 +1,13 @@
+from http.client import HTTPException
 import json
 import os
 import logging
 from datetime import timedelta
 from json import JSONDecodeError
-from typing import Dict
+from typing import Dict, List
 
 import requests
-from fastapi import FastAPI, UploadFile, Form, Depends
+from fastapi import FastAPI, UploadFile, Form, Depends, Query
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,11 +18,11 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from .auth import authenticate_user, ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token, create_user, get_current_user
-from .entity import SessionLocal, Chat, Goal, Explain, Evaluate, Edit, User, Recommend
+from .entity import SessionLocal, Chat, Goal, Explain, Evaluate, Edit, TaskManagement, User, Recommend
 from pydantic import BaseModel
 
 from .models import Token
-from ..datamodel import GoalWebRequest, SummaryUrlRequest, TextGenerationConfig, UploadUrl, VisualizeEditWebRequest, \
+from ..datamodel import GoalWebRequest, SummaryUrlRequest, TaskCreateRequest, TextGenerationConfig, UploadUrl, VisualizeEditWebRequest, \
     VisualizeEvalWebRequest, VisualizeExplainWebRequest, VisualizeRecommendRequest, VisualizeRepairWebRequest, \
     VisualizeWebRequest, InfographicsRequest, VisualizeConclusionRequest, DescribeData, UserCreate, VisWebRequest
 from ..components import Manager
@@ -618,6 +619,89 @@ async def get_chat_info(req: VisWebRequest,
             "evaluations": eva,
             "recommend": rec,
             "message": "Successfully get chatInfo!"}
+
+# 创建任务
+@api.post("/tasks/create", response_model=dict)
+async def create_task(
+    req: TaskCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    """Create a new task with the provided details."""
+
+    try:
+        # 创建新的任务条目
+        db_task = TaskManagement(
+            task_name=req.task_name,
+            task_details=req.task_details,
+            chat_id=req.chat_id,
+        )
+        
+        # 添加到数据库会话并提交
+        db.add(db_task)
+        db.commit()
+        db.refresh(db_task)
+
+        return {
+            "status": True,
+            "data": {
+                "task_id": db_task.task_id,  # 使用正确的字段名
+                "name": db_task.task_name,
+                "details": db_task.task_details,
+                "chat_id": db_task.chat_id,
+                "created_at": db_task.created_at,
+                "updated_at": db_task.updated_at
+            },
+            "message": "Successfully created task!"
+        }
+
+    except Exception as exception_error:
+        logging.error(f"Error creating task: {str(exception_error)}")
+        return {
+            "status": True,
+            "message": f"Error creating task. {exception_error}"
+        }
+
+# 查询所有任务
+@api.get("/tasks/getAll", response_model=dict)
+def get_all_tasks(
+    skip: int = Query(0, description="Skip number of tasks"),
+    limit: int = Query(10, description="Number of tasks to return"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    """Retrieve a list of all tasks with pagination."""
+    
+    try:
+
+        # 查询所有任务并应用分页
+        tasks = db.query(TaskManagement).offset(skip).limit(limit).all()
+        
+        # 构建任务列表，确保使用正确的属性名
+        task_list = [
+            {
+                "task_id": task.task_id,  # 使用正确的属性名 task_id
+                "task_name": task.task_name,
+                "task_details": task.task_details,
+                "chat_id": task.chat_id,
+                "created_at": task.created_at,
+                "updated_at": task.updated_at
+            } 
+            for task in tasks
+        ]
+
+        # 返回包含状态、任务列表和消息的字典
+        return {"status": True, "tasks": task_list, "message": "Successfully listed all tasks!"}
+
+    except Exception as exception_error:
+        logging.error(f"Error fetching tasks: {str(exception_error)}")
+        return {
+            "status": False,
+            "message": f"Error fetching tasks. {exception_error}"
+        }
+    
+
+# 查询单个任务
 
 
 # 登录获取令牌

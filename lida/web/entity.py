@@ -101,6 +101,27 @@ class User(TimestampMixin, Base):
     username = Column(String(50), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
 
+# 新增 TaskManagement 模型
+class TaskManagement(Base):
+    __tablename__ = "task_management"
+
+    task_id = Column(Integer, primary_key=True, autoincrement=True, comment='任务ID')
+    task_name = Column(String(255), nullable=False, comment='任务名称')
+    task_details = Column(Text, nullable=True, comment='任务详情')
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=True)
+    chat_id = Column(String(255), nullable=True, comment='ChatID')
+
+# 新增 JsonDataStorage 模型
+class JsonDataStorage(TimestampMixin, Base):
+    __tablename__ = "json_data_storage"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, comment='唯一ID')
+    chat_id = Column(String(255), nullable=False, comment='记录ID（如您提供的id字段）')
+    json_table1 = Column(JSON, nullable=False, comment='存储整个JSON对象')
+    json_table2 = Column(JSON, nullable=False, comment='存储整个JSON对象')
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=True)
 
 # 创建数据库表（如果表不存在）
 Base.metadata.create_all(bind=engine)

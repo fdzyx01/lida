@@ -1,6 +1,7 @@
 # from dataclasses import dataclass
 import base64
 from dataclasses import field
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 from llmx import TextGenerationConfig
@@ -276,3 +277,13 @@ class VisWebRequest:
 
     summary: Summary
     goal_id: str
+
+# 创建任务
+@dataclass
+class TaskCreateRequest:
+    """A request for creating a new task"""
+
+    task_name: str 
+    task_details: str
+    chat_id: str
+    
