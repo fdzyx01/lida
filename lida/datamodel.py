@@ -301,4 +301,8 @@ class JsonDataStorageCreateRequest:
 class GoalUpdateExplanationRequest:
     id: str
     chat_id: str
-    
+# 更新Task表的TaskName字段
+@dataclass
+class TaskNameUpdateRequest:
+    chat_id: str
+    new_task_name: str

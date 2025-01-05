@@ -22,7 +22,7 @@ from .entity import JsonDataStorage, SessionLocal, Chat, Goal, Explain, Evaluate
 from pydantic import BaseModel
 
 from .models import Token
-from ..datamodel import GoalUpdateExplanationRequest, GoalWebRequest, JsonDataStorageCreateRequest, SummaryUrlRequest, TaskCreateRequest, TextGenerationConfig, UploadUrl, VisualizeEditWebRequest, \
+from ..datamodel import GoalUpdateExplanationRequest, GoalWebRequest, JsonDataStorageCreateRequest, SummaryUrlRequest, TaskCreateRequest, TaskNameUpdateRequest, TextGenerationConfig, UploadUrl, VisualizeEditWebRequest, \
     VisualizeEvalWebRequest, VisualizeExplainWebRequest, VisualizeRecommendRequest, VisualizeRepairWebRequest, \
     VisualizeWebRequest, InfographicsRequest, VisualizeConclusionRequest, DescribeData, UserCreate, VisWebRequest
 from ..components import Manager
@@ -746,6 +746,57 @@ def get_task_by_name(
             "message": f"Error fetching tasks. {exception_error}"
         }
 
+# 根据chat_id修改任务表task_name
+@api.put("/tasks/updateTaskNameByChatId", response_model=dict)
+def update_task_name_by_chat_id(
+    req: TaskNameUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    """Update the task_name field for all records matching the provided chat_id."""
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="User not authenticated")
+
+        logging.info(f"Received request to update task_name for chat_id={req.chat_id}")
+
+        # 查询与 chat_id 匹配的所有记录
+        tasks = (
+            db.query(TaskManagement)
+            .filter(TaskManagement.chat_id == req.chat_id)
+            .all()
+        )
+
+        if not tasks:
+            logging.warning(f"No matching tasks found for chat_id={req.chat_id}")
+            return {"status": False, "message": "No matching tasks found."}
+
+        # 更新每个匹配记录的 task_name 字段
+        updated_count = 0
+        for task in tasks:
+            task.task_name = req.new_task_name
+            updated_count += 1
+
+        # 提交更改到数据库
+        db.commit()
+
+        logging.info(f"Successfully updated {updated_count} tasks for chat_id={req.chat_id}")
+
+        return {
+            "status": True,
+            "message": f"Successfully updated {updated_count} tasks.",
+            "updated_count": updated_count
+        }
+
+    except HTTPException as http_error:
+        logging.error(f"HTTP error for chat_id {req.chat_id}: {str(http_error)}")
+        raise http_error
+    except Exception as exception_error:
+        error_message = f"Error updating task_name for chat_id {req.chat_id}: {str(exception_error)}"
+        logging.error(error_message)
+        return {"status": False, "message": error_message}
+
+
 # 根据chat_id查询最新的一条goals表中的记录
 @api.get("/goals/getLatestIdByChatId", response_model=dict)
 def get_latest_id_by_chat_id(
@@ -963,6 +1014,7 @@ def get_success_goals_by_chat_id(
         error_message = f"Error fetching success goals for chat_id {chat_id}: {str(exception_error)}"
         logging.error(error_message)
         raise HTTPException(status_code=500, detail=error_message)
+
 
 
 # 登录获取令牌
