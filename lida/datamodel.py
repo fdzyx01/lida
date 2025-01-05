@@ -295,5 +295,10 @@ class JsonDataStorageCreateRequest:
     chat_id: str 
     json_table1: dict
     json_table2: dict
-   
+
+# 更新Goal表的Explanation字段
+@dataclass
+class GoalUpdateExplanationRequest:
+    id: str
+    chat_id: str
     

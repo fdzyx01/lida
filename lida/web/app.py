@@ -22,7 +22,7 @@ from .entity import JsonDataStorage, SessionLocal, Chat, Goal, Explain, Evaluate
 from pydantic import BaseModel
 
 from .models import Token
-from ..datamodel import GoalWebRequest, JsonDataStorageCreateRequest, SummaryUrlRequest, TaskCreateRequest, TextGenerationConfig, UploadUrl, VisualizeEditWebRequest, \
+from ..datamodel import GoalUpdateExplanationRequest, GoalWebRequest, JsonDataStorageCreateRequest, SummaryUrlRequest, TaskCreateRequest, TextGenerationConfig, UploadUrl, VisualizeEditWebRequest, \
     VisualizeEvalWebRequest, VisualizeExplainWebRequest, VisualizeRecommendRequest, VisualizeRepairWebRequest, \
     VisualizeWebRequest, InfographicsRequest, VisualizeConclusionRequest, DescribeData, UserCreate, VisWebRequest
 from ..components import Manager
@@ -849,20 +849,120 @@ def create_json_data_storage(
             "message": error_message
         }
     
+# 根据更新goal表中 goal_id和chat_id都匹配的记录，更新explanation字段为success
+@api.put("/goals/updateExplanation", response_model=dict)
+def update_goal_explanation(
+    req: GoalUpdateExplanationRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    """Update the explanation field for a specific goal record based on goal_id and chat_id."""
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="User not authenticated")
 
+        # 查询与 goal_id 和 chat_id 匹配的记录
+        goal = (
+            db.query(Goal)
+            .filter(Goal.id == req.id, Goal.chat_id == req.chat_id)
+            .first()
+        )
+        
+        if not goal:
+            return {"status": False, "message": "No matching goal found."}
 
+        # 更新 explanation 字段
+        goal.explanation = "success"
 
+        # 提交更改到数据库
+        db.commit()
+        db.refresh(goal)
 
+         # 构建返回的响应数据
+        updated_goal_data = {
+            "id": goal.id,
+            "chat_id": goal.chat_id,
+            "index": goal.index,
+            "question": goal.question,
+            "visualization": goal.visualization,
+            "rationale": goal.rationale,
+            "is_auto": bool(goal.is_auto),  # Assuming is_auto is stored as integer in the database
+            "library": goal.library,
+            "code": goal.code,
+            "explanation": goal.explanation,
+            "create_time": goal.create_time.isoformat() if goal.create_time else None,
+            "update_time": goal.update_time.isoformat() if goal.update_time else None
+            
+        }
 
+        return {
+            "status": True,
+            "message": "Successfully updated the explanation.",
+            "goal": updated_goal_data
+        }
 
+    except HTTPException as http_error:
+        logging.error(f"HTTP error for goal_id {req.id} and chat_id {req.chat_id}: {str(http_error)}")
+        raise http_error
+    except Exception as exception_error:
+        error_message = f"Error updating explanation for goal_id {req.id} and chat_id {req.chat_id}: {str(exception_error)}"
+        logging.error(error_message)
+        return {
+            "status": False,
+            "message": error_message
+        }
+    
+# 根据chat_id查询出表中explanation字段为success的goal记录
+@api.get("/goals/getSuccessGoalsByChatId", response_model=List[dict])
+def get_success_goals_by_chat_id(
+    chat_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> List[dict]:
+    """Fetch all goal records with explanation 'success' for a specific chat_id."""
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="User not authenticated")
 
+        logging.info(f"Received request to fetch success goals for chat_id={chat_id}")
 
+        # 查询与 chat_id 匹配且 explanation 为 'success' 的记录
+        goals = (
+            db.query(Goal)
+            .filter(Goal.chat_id == chat_id, Goal.explanation == "success")
+            .all()
+        )
 
+        logging.info(f"Found {len(goals)} success goals for chat_id={chat_id}")
 
+        # 构建返回的响应数据
+        response_data = [
+            {
+                "id": goal.id,
+                "chat_id": goal.chat_id,
+                "index": goal.index,
+                "question": goal.question,
+                "visualization": goal.visualization,
+                "rationale": goal.rationale,
+                "is_auto": bool(goal.is_auto),  # Assuming is_auto is stored as integer in the database
+                "library": goal.library,
+                "code": goal.code,
+                "explanation": goal.explanation,
+                "create_time": goal.create_time.isoformat() if goal.create_time else None,
+                "update_time": goal.update_time.isoformat() if goal.update_time else None
+            }
+            for goal in goals
+        ]
 
+        return response_data
 
-
-
+    except HTTPException as http_error:
+        logging.error(f"HTTP error for chat_id {chat_id}: {str(http_error)}")
+        raise http_error
+    except Exception as exception_error:
+        error_message = f"Error fetching success goals for chat_id {chat_id}: {str(exception_error)}"
+        logging.error(error_message)
+        raise HTTPException(status_code=500, detail=error_message)
 
 
 # 登录获取令牌
