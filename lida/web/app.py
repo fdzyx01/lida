@@ -1,3 +1,4 @@
+from http.client import HTTPException
 import json
 import os
 import logging
@@ -6,7 +7,7 @@ from json import JSONDecodeError
 from typing import Dict, List
 
 import requests
-from fastapi import FastAPI, UploadFile, Query, Form, Depends
+from fastapi import FastAPI, UploadFile, Form, Depends, Query
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,11 +18,11 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from .auth import authenticate_user, ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token, create_user, get_current_user
-from .entity import SessionLocal, Chat, Goal, Explain, Evaluate, Edit, User, Recommend, TaskManagement, JsonDataStorage
+from .entity import JsonDataStorage, SessionLocal, Chat, Goal, Explain, Evaluate, Edit, TaskManagement, User, Recommend
 from pydantic import BaseModel
 
 from .models import Token
-from ..datamodel import GoalWebRequest, SummaryUrlRequest, TextGenerationConfig, UploadUrl, VisualizeEditWebRequest, \
+from ..datamodel import GoalUpdateExplanationRequest, GoalWebRequest, JsonDataStorageCreateRequest, SummaryUrlRequest, TaskCreateRequest, TaskNameUpdateRequest, TextGenerationConfig, UploadUrl, VisualizeEditWebRequest, \
     VisualizeEvalWebRequest, VisualizeExplainWebRequest, VisualizeRecommendRequest, VisualizeRepairWebRequest, \
     VisualizeWebRequest, InfographicsRequest, VisualizeConclusionRequest, DescribeData, UserCreate, VisWebRequest
 from ..components import Manager
@@ -618,6 +619,416 @@ async def get_chat_info(req: VisWebRequest,
             "evaluations": eva,
             "recommend": rec,
             "message": "Successfully get chatInfo!"}
+
+# 创建任务
+@api.post("/tasks/create", response_model=dict)
+async def create_task(
+    req: TaskCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    """Create a new task with the provided details."""
+
+    try:
+        with db.begin():
+            db_chat = Chat(user_id=current_user.id)
+            db.add(db_chat)
+            db.flush()
+
+            # 创建新的任务条目
+            db_task = TaskManagement(
+                task_name=req.task_name,
+                task_details=req.task_details,
+                chat_id=db_chat.id, # 此处 chat_id 已经由数据库自动生成并赋值
+            )
+
+            
+            # 添加到数据库会话并提交
+            db.add(db_task)
+            db.flush()
+
+            return {
+                "status": True,
+                "data": {
+                    "task_id": db_task.task_id,  # 使用正确的字段名
+                    "name": db_task.task_name,
+                    "details": db_task.task_details,
+                    "chat_id": str(db_task.chat_id),
+                    "created_at": db_task.created_at,
+                    "updated_at": db_task.updated_at
+                },
+                "message": "Successfully created task!"
+            }
+
+    except Exception as exception_error:
+        db.rollback()
+        logging.error(f"Error creating task: {str(exception_error)}")
+        return {
+            "status": True,
+            "message": f"Error creating task. {exception_error}"
+        }
+
+# 查询所有任务
+@api.get("/tasks/getAll", response_model=dict)
+def get_all_tasks(
+    skip: int = Query(0, description="Skip number of tasks"),
+    limit: int = Query(10, description="Number of tasks to return"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    """Retrieve a list of all tasks with pagination."""
+    
+    try:
+
+        # 查询所有任务并应用分页
+        tasks = db.query(TaskManagement).offset(skip).limit(limit).all()
+        
+        # 构建任务列表，确保使用正确的属性名
+        task_list = [
+            {
+                "task_id": task.task_id,  # 使用正确的属性名 task_id
+                "task_name": task.task_name,
+                "task_details": task.task_details,
+                "chat_id": task.chat_id,
+                "created_at": task.created_at,
+                "updated_at": task.updated_at
+            } 
+            for task in tasks
+        ]
+
+        # 返回包含状态、任务列表和消息的字典
+        return {"status": True, "tasks": task_list, "message": "Successfully listed all tasks!"}
+
+    except Exception as exception_error:
+        logging.error(f"Error fetching tasks: {str(exception_error)}")
+        return {
+            "status": False,
+            "message": f"Error fetching tasks. {exception_error}"
+        }
+    
+# 根据名字查询任务
+@api.get("/tasks/getName", response_model=dict)
+def get_task_by_name(
+    task_name: str,
+    skip: int = Query(0, description="Skip number of tasks"),
+    limit: int = Query(10, description="Number of tasks to return"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    """Retrieve a list of all tasks with pagination."""
+    
+    try:
+
+        # 构建查询基础
+        query = db.query(TaskManagement)
+
+        # 如果提供了 task_name 参数，则应用过滤
+        if task_name:
+            query = query.filter(TaskManagement.task_name.ilike(f"%{task_name}%"))
+
+        # 应用分页参数
+        paginated_tasks = query.offset(skip).limit(limit).all()
+        
+        # 构建任务列表，确保使用正确的属性名
+        task_list = [
+            {
+                "task_id": task.task_id,  # 使用正确的属性名 task_id
+                "task_name": task.task_name,
+                "task_details": task.task_details,
+                "chat_id": task.chat_id,
+                "created_at": task.created_at,
+                "updated_at": task.updated_at
+            } 
+            for task in paginated_tasks
+        ]
+
+        # 返回包含状态、任务列表和消息的字典
+        return {"status": True, "tasks": task_list, "message": "Successfully listed name tasks!"}
+
+    except Exception as exception_error:
+        logging.error(f"Error fetching tasks: {str(exception_error)}")
+        return {
+            "status": False,
+            "message": f"Error fetching tasks. {exception_error}"
+        }
+
+# 根据chat_id修改任务表task_name
+@api.put("/tasks/updateTaskNameByChatId", response_model=dict)
+def update_task_name_by_chat_id(
+    req: TaskNameUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    """Update the task_name field for all records matching the provided chat_id."""
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="User not authenticated")
+
+        logging.info(f"Received request to update task_name for chat_id={req.chat_id}")
+
+        with db.begin():
+            # 查询与 chat_id 匹配的所有记录
+            tasks = (
+                db.query(TaskManagement)
+                .filter(TaskManagement.chat_id == req.chat_id)
+                .all()
+            )
+
+            if not tasks:
+                logging.warning(f"No matching tasks found for chat_id={req.chat_id}")
+                return {"status": False, "message": "No matching tasks found."}
+
+            # 更新每个匹配记录的 task_name 字段
+            updated_count = 0
+            for task in tasks:
+                task.task_name = req.new_task_name
+                updated_count += 1
+
+        logging.info(f"Successfully updated {updated_count} tasks for chat_id={req.chat_id}")
+
+        return {
+            "status": True,
+            "message": f"Successfully updated {updated_count} tasks.",
+            "updated_count": updated_count
+        }
+
+    except HTTPException as http_error:
+        logging.error(f"HTTP error for chat_id {req.chat_id}: {str(http_error)}")
+        raise http_error
+    except Exception as exception_error:
+        db.rollback()
+        error_message = f"Error updating task_name for chat_id {req.chat_id}: {str(exception_error)}"
+        logging.error(error_message)
+        return {"status": False, "message": error_message}
+
+
+# 根据chat_id查询最新的一条goals表中的记录
+@api.get("/goals/getLatestIdByChatId", response_model=dict)
+def get_latest_id_by_chat_id(
+    chat_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    """Retrieve the latest goal ID filtered by chat ID."""
+    
+    try:
+        # 查询与 chat_id 匹配的最新记录的 id
+        latest_goal = (
+            db.query(Goal)
+            .filter(Goal.chat_id == chat_id)
+            .order_by(Goal.update_time.desc())  # 或者使用 create_time.desc()
+            .first()
+        )
+        
+        if not latest_goal:
+            return {"status": False, "message": "No goals found for the given chat ID."}
+
+        # 返回包含状态、单个目标记录和消息的字典
+        return {
+            "status": True,
+            "goal": {
+                "id": latest_goal.id,
+                "chat_id": latest_goal.chat_id,
+                "index": latest_goal.index,
+                "question": latest_goal.question,
+                "visualization": latest_goal.visualization,
+                "rationale": latest_goal.rationale,
+                "is_auto": bool(latest_goal.is_auto),  # Assuming is_auto is stored as integer in the database
+                "library": latest_goal.library,
+                "code": latest_goal.code,
+                "explanation": latest_goal.explanation,
+                "create_time": latest_goal.create_time.isoformat() if latest_goal.create_time else None,
+                "update_time": latest_goal.update_time.isoformat() if latest_goal.update_time else None
+            },
+            "message": "Successfully retrieved the latest goal!"
+        }
+
+    except Exception as exception_error:
+        logging.error(f"Error fetching latest goal: {str(exception_error)}")
+        return {
+            "status": False,
+            "message": f"Error fetching latest goal.{exception_error}"
+        }
+
+# 创建json_data_storage 两条json数据
+@api.post("/jsonDataStorage/create", response_model=dict)
+def create_json_data_storage(
+    req:JsonDataStorageCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    """Create a new JSON data storage record."""
+    
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="User not authenticated")
+        
+         # 验证输入参数
+        if not req.chat_id or not isinstance(req.chat_id, str):
+            raise ValueError("Invalid chat_id")
+        
+        if not req.json_table1 or not isinstance(req.json_table1, dict):
+            raise ValueError("Invalid json_table1")
+        
+        if not req.json_table2 or not isinstance(req.json_table2, dict):
+            raise ValueError("Invalid json_table2")
+
+        with db.begin():  # 使用上下文管理器确保事务管理
+            # 创建新的 JsonDataStorage 实例并填充数据
+            new_record = JsonDataStorage(
+                chat_id=req.chat_id,
+                json_table1=req.json_table1,
+                json_table2=req.json_table2
+            )
+
+            # 添加到数据库会话
+            db.add(new_record)
+            db.flush() # 刷新新记录，获取其自增ID
+
+            # 提交后刷新实例以获取最新数据
+            db.refresh(new_record)
+
+        return {
+            "status": True,
+            "data": {
+                "id": new_record.id,  # 使用正确的字段名
+                "chat_id": new_record.chat_id,
+                "json_table1": new_record.json_table1,
+                "json_table2": new_record.json_table2,
+                "created_at": new_record.created_at,
+                "updated_at": new_record.updated_at
+            },
+            "message": "Successfully created jsonDataStorage record!"
+        }
+
+    except HTTPException as http_error:
+        logging.error(f"HTTP error creating JsonDataStorage record for user {current_user.id}: {str(http_error)}")
+        raise http_error
+    except Exception as exception_error:
+        db.rollback()
+        error_message = f"Error creating JsonDataStorage record: {str(exception_error)}"
+        logging.error(error_message)
+        return {
+            "status": False,
+            "message": error_message
+        }
+    
+# 根据更新goal表中 goal_id和chat_id都匹配的记录，更新explanation字段为success
+@api.put("/goals/updateExplanation", response_model=dict)
+def update_goal_explanation(
+    req: GoalUpdateExplanationRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    """Update the explanation field for a specific goal record based on goal_id and chat_id."""
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="User not authenticated")
+
+        with db.begin():  # 使用上下文管理器确保事务管理
+            # 查询与 goal_id 和 chat_id 匹配的记录
+            goal = (
+                db.query(Goal)
+                .filter(Goal.id == req.id, Goal.chat_id == req.chat_id)
+                .first()
+            )
+            
+            if not goal:
+                return {"status": False, "message": "No matching goal found."}
+
+            # 更新 explanation 字段
+            goal.explanation = "success"
+
+            # 强制刷新会话以确保更改被追踪
+            db.flush()
+
+         # 构建返回的响应数据
+        updated_goal_data = {
+            "id": goal.id,
+            "chat_id": goal.chat_id,
+            "index": goal.index,
+            "question": goal.question,
+            "visualization": goal.visualization,
+            "rationale": goal.rationale,
+            "is_auto": bool(goal.is_auto),  # Assuming is_auto is stored as integer in the database
+            "library": goal.library,
+            "code": goal.code,
+            "explanation": goal.explanation,
+            "create_time": goal.create_time.isoformat() if goal.create_time else None,
+            "update_time": goal.update_time.isoformat() if goal.update_time else None
+            
+        }
+
+        return {
+            "status": True,
+            "message": "Successfully updated the explanation.",
+            "goal": updated_goal_data
+        }
+
+    except HTTPException as http_error:
+        logging.error(f"HTTP error for goal_id {req.id} and chat_id {req.chat_id}: {str(http_error)}")
+        raise http_error
+    except Exception as exception_error:
+        db.rollback()
+        error_message = f"Error updating explanation for goal_id {req.id} and chat_id {req.chat_id}: {str(exception_error)}"
+        logging.error(error_message)
+        return {
+            "status": False,
+            "message": error_message
+        }
+    
+# 根据chat_id查询出表中explanation字段为success的goal记录
+@api.get("/goals/getSuccessGoalsByChatId", response_model=List[dict])
+def get_success_goals_by_chat_id(
+    chat_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> List[dict]:
+    """Fetch all goal records with explanation 'success' for a specific chat_id."""
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="User not authenticated")
+
+        logging.info(f"Received request to fetch success goals for chat_id={chat_id}")
+
+        # 查询与 chat_id 匹配且 explanation 为 'success' 的记录
+        goals = (
+            db.query(Goal)
+            .filter(Goal.chat_id == chat_id, Goal.explanation == "success")
+            .all()
+        )
+
+        logging.info(f"Found {len(goals)} success goals for chat_id={chat_id}")
+
+        # 构建返回的响应数据
+        response_data = [
+            {
+                "id": goal.id,
+                "chat_id": goal.chat_id,
+                "index": goal.index,
+                "question": goal.question,
+                "visualization": goal.visualization,
+                "rationale": goal.rationale,
+                "is_auto": bool(goal.is_auto),  # Assuming is_auto is stored as integer in the database
+                "library": goal.library,
+                "code": goal.code,
+                "explanation": goal.explanation,
+                "create_time": goal.create_time.isoformat() if goal.create_time else None,
+                "update_time": goal.update_time.isoformat() if goal.update_time else None
+            }
+            for goal in goals
+        ]
+
+        return response_data
+
+    except HTTPException as http_error:
+        logging.error(f"HTTP error for chat_id {chat_id}: {str(http_error)}")
+        raise http_error
+    except Exception as exception_error:
+        error_message = f"Error fetching success goals for chat_id {chat_id}: {str(exception_error)}"
+        logging.error(error_message)
+        raise HTTPException(status_code=500, detail=error_message)
+
 
 
 # 登录获取令牌

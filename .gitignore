@@ -19,6 +19,7 @@ test.py
 experiments/data
 test.py
 .azure
+/lidacxf/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

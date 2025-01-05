@@ -1,6 +1,7 @@
 # from dataclasses import dataclass
 import base64
 from dataclasses import field
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 from llmx import TextGenerationConfig
@@ -276,3 +277,32 @@ class VisWebRequest:
 
     summary: Summary
     goal_id: str
+
+# 创建任务
+@dataclass
+class TaskCreateRequest:
+    """A request for creating a new task"""
+
+    task_name: str 
+    task_details: str
+    # chat_id: str
+
+# 创建JsonDataStorage
+@dataclass
+class JsonDataStorageCreateRequest:
+    """A request for creating a new JsonDataStorage"""
+
+    chat_id: str 
+    json_table1: dict
+    json_table2: dict
+
+# 更新Goal表的Explanation字段
+@dataclass
+class GoalUpdateExplanationRequest:
+    id: str
+    chat_id: str
+# 更新Task表的TaskName字段
+@dataclass
+class TaskNameUpdateRequest:
+    chat_id: str
+    new_task_name: str
