@@ -860,6 +860,9 @@ def create_json_data_storage(
     """Create a new JSON data storage record."""
     
     try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="User not authenticated")
+        
          # 验证输入参数
         if not req.chat_id or not isinstance(req.chat_id, str):
             raise ValueError("Invalid chat_id")
@@ -870,17 +873,20 @@ def create_json_data_storage(
         if not req.json_table2 or not isinstance(req.json_table2, dict):
             raise ValueError("Invalid json_table2")
 
-        # 创建新的 JsonDataStorage 实例并填充数据
-        new_record = JsonDataStorage(
-            chat_id=req.chat_id,
-            json_table1=req.json_table1,
-            json_table2=req.json_table2
-        )
+        with db.begin():  # 使用上下文管理器确保事务管理
+            # 创建新的 JsonDataStorage 实例并填充数据
+            new_record = JsonDataStorage(
+                chat_id=req.chat_id,
+                json_table1=req.json_table1,
+                json_table2=req.json_table2
+            )
 
-        # 添加到数据库会话并提交
-        db.add(new_record)
-        db.commit()
-        db.refresh(new_record)
+            # 添加到数据库会话
+            db.add(new_record)
+            db.flush() # 刷新新记录，获取其自增ID
+
+            # 提交后刷新实例以获取最新数据
+            db.refresh(new_record)
 
         return {
             "status": True,
@@ -896,8 +902,10 @@ def create_json_data_storage(
         }
 
     except HTTPException as http_error:
+        logging.error(f"HTTP error creating JsonDataStorage record for user {current_user.id}: {str(http_error)}")
         raise http_error
     except Exception as exception_error:
+        db.rollback()
         error_message = f"Error creating JsonDataStorage record: {str(exception_error)}"
         logging.error(error_message)
         return {
@@ -917,22 +925,22 @@ def update_goal_explanation(
         if not current_user:
             raise HTTPException(status_code=401, detail="User not authenticated")
 
-        # 查询与 goal_id 和 chat_id 匹配的记录
-        goal = (
-            db.query(Goal)
-            .filter(Goal.id == req.id, Goal.chat_id == req.chat_id)
-            .first()
-        )
-        
-        if not goal:
-            return {"status": False, "message": "No matching goal found."}
+        with db.begin():  # 使用上下文管理器确保事务管理
+            # 查询与 goal_id 和 chat_id 匹配的记录
+            goal = (
+                db.query(Goal)
+                .filter(Goal.id == req.id, Goal.chat_id == req.chat_id)
+                .first()
+            )
+            
+            if not goal:
+                return {"status": False, "message": "No matching goal found."}
 
-        # 更新 explanation 字段
-        goal.explanation = "success"
+            # 更新 explanation 字段
+            goal.explanation = "success"
 
-        # 提交更改到数据库
-        db.commit()
-        db.refresh(goal)
+            # 强制刷新会话以确保更改被追踪
+            db.flush()
 
          # 构建返回的响应数据
         updated_goal_data = {
@@ -961,6 +969,7 @@ def update_goal_explanation(
         logging.error(f"HTTP error for goal_id {req.id} and chat_id {req.chat_id}: {str(http_error)}")
         raise http_error
     except Exception as exception_error:
+        db.rollback()
         error_message = f"Error updating explanation for goal_id {req.id} and chat_id {req.chat_id}: {str(exception_error)}"
         logging.error(error_message)
         return {
