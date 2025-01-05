@@ -766,25 +766,23 @@ def update_task_name_by_chat_id(
 
         logging.info(f"Received request to update task_name for chat_id={req.chat_id}")
 
-        # 查询与 chat_id 匹配的所有记录
-        tasks = (
-            db.query(TaskManagement)
-            .filter(TaskManagement.chat_id == req.chat_id)
-            .all()
-        )
+        with db.begin():
+            # 查询与 chat_id 匹配的所有记录
+            tasks = (
+                db.query(TaskManagement)
+                .filter(TaskManagement.chat_id == req.chat_id)
+                .all()
+            )
 
-        if not tasks:
-            logging.warning(f"No matching tasks found for chat_id={req.chat_id}")
-            return {"status": False, "message": "No matching tasks found."}
+            if not tasks:
+                logging.warning(f"No matching tasks found for chat_id={req.chat_id}")
+                return {"status": False, "message": "No matching tasks found."}
 
-        # 更新每个匹配记录的 task_name 字段
-        updated_count = 0
-        for task in tasks:
-            task.task_name = req.new_task_name
-            updated_count += 1
-
-        # 提交更改到数据库
-        db.commit()
+            # 更新每个匹配记录的 task_name 字段
+            updated_count = 0
+            for task in tasks:
+                task.task_name = req.new_task_name
+                updated_count += 1
 
         logging.info(f"Successfully updated {updated_count} tasks for chat_id={req.chat_id}")
 
@@ -798,6 +796,7 @@ def update_task_name_by_chat_id(
         logging.error(f"HTTP error for chat_id {req.chat_id}: {str(http_error)}")
         raise http_error
     except Exception as exception_error:
+        db.rollback()
         error_message = f"Error updating task_name for chat_id {req.chat_id}: {str(exception_error)}"
         logging.error(error_message)
         return {"status": False, "message": error_message}
