@@ -21,7 +21,7 @@ class TimestampMixin:
 
     @declared_attr
     def update_time(cls):
-        return Column(DateTime, nullable=True)
+        return Column(DateTime, nullable=False, default=datetime.utcnow)
 
     @staticmethod
     def before_update_listener(mapper, connection, target):
