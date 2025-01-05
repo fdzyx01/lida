@@ -6,3 +6,5 @@ OLLAMA_MAX_TOKENS = 4096                                        # 默认最大 T
 
 # mysql数据库
 DATABASE_URL = "mysql+pymysql://root:lida112233@152.136.172.125:38083/lida"
+
+

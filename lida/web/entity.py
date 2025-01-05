@@ -21,7 +21,7 @@ class TimestampMixin:
 
     @declared_attr
     def update_time(cls):
-        return Column(DateTime, nullable=True)
+        return Column(DateTime, nullable=False, default=datetime.utcnow)
 
     @staticmethod
     def before_update_listener(mapper, connection, target):
@@ -75,7 +75,7 @@ class Goal(TimestampMixin, Base):
     library = Column(String(50), nullable=True)
     code = Column(Text, nullable=True)
     explanation = Column(String(255), nullable=True)
-
+    
 
 class Edit(TimestampMixin, Base):
     __tablename__ = "t_edit"
@@ -142,9 +142,32 @@ class JsonDataStorage(MytimeStampMixin, Base):
 
 
 
+class TaskManagement(MytimeStampMixin, Base):
+    __tablename__ = "task_management"
+
+    task_id = Column(Integer, primary_key=True, autoincrement=True, comment='任务ID')
+    task_name = Column(String(255), nullable=False, comment='任务名称')
+    task_details = Column(Text, nullable=True, comment='任务详情')
+    # created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    # updated_at = Column(DateTime, nullable=True)
+    chat_id = Column(String(255), nullable=True, comment='ChatID')
+
+# 新增 JsonDataStorage 模型
+class JsonDataStorage(MytimeStampMixin, Base):
+    __tablename__ = "json_data_storage"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, comment='唯一ID')
+    chat_id = Column(String(255), nullable=False, comment='记录ID（如您提供的id字段）')
+    json_table1 = Column(JSON, nullable=False, comment='存储整个JSON对象')
+    json_table2 = Column(JSON, nullable=False, comment='存储整个JSON对象')
+    # created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    # updated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+
+
 # 创建数据库表（如果表不存在）
 Base.metadata.create_all(bind=engine)
-
 
 def get_db():
     db = SessionLocal()

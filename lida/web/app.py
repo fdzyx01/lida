@@ -1049,3 +1049,88 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db)) -> dict
         return {"status": False, "message": "Username already registered"}
     create_user(db, user.username, user.password)
     return {"status": True, "message": "Successfully registered user!"}
+
+
+
+class deleteTaskInput(BaseModel):
+    taskIdList: List[int]
+
+@api.post("/deleteTask")
+async def deleteTask(
+    req: deleteTaskInput,
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+): 
+    try:
+        # 开始事务
+        with db.begin():  # 或者使用 db.begin_nested()，如果你需要嵌套事务
+            chatIdList = [task.chat_id for task in db.query(TaskManagement).filter(TaskManagement.task_id.in_(req.taskIdList)).all()]
+            for chatId in chatIdList:
+                chat = db.query(Chat).filter(Chat.id == chatId, Chat.user_id == current_user.id).first()
+                if (chat is None):
+                    return {"status": False, "message": f"存在不属于当前用户的记录，删除失败，事务已回滚！"}
+                # 修正逻辑，确保 chatid 是一个列表
+                db.delete(chat)
+                goal = db.query(Goal).filter(Goal.chat_id == chat.id).first()
+                if goal:
+                    db.delete(goal)
+                    # 删除与 goal 相关的其他表数据
+                    edit = db.query(Edit).filter(Edit.goal_id == goal.id).first()
+                    if edit:
+                        db.delete(edit)
+                    explain = db.query(Explain).filter(Explain.goal_id == goal.id).first()
+                    if explain:
+                        db.delete(explain)
+                    evaluate = db.query(Evaluate).filter(Evaluate.goal_id == goal.id).first()
+                    if evaluate:
+                        db.delete(evaluate)
+                    recommend = db.query(Recommend).filter(Recommend.goal_id == goal.id).first()
+                    if recommend:
+                        db.delete(recommend)
+                
+                db.query(TaskManagement).filter(TaskManagement.chat_id == str(chat.id)).delete()
+            
+    except Exception as e:
+        # 捕获数据库异常并回滚事务
+        db.rollback()
+        return {"status": False, "message": f"删除失败，事务已回滚: {str(e)}"}
+
+    return {"status": True, "message": "Successfully deleted chat record!"}
+
+
+
+@api.get("/select_json_data_storage")
+async def select_json_data_storage(
+    chat_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        json_data_storage = db.query(JsonDataStorage).filter(JsonDataStorage.chat_id == str(chat_id)).first()
+    except Exception as e:
+        return {"status": False, "message": f"Failed to select json_data_storage: {str(e)}"}
+    return {"status": True, "json_data_storage": json_data_storage, "message": "Successfully get json_data_storage!"}
+
+class JsonDataStorageInput(BaseModel):
+    chat_id: str
+    json_table2: dict
+@api.post("/update_json_data_storage")
+async def update_json_data_storage(
+    req: JsonDataStorageInput,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        with db.begin():
+            # 查询符合条件的第一条记录
+            record = db.query(JsonDataStorage).filter(JsonDataStorage.chat_id == str(req.chat_id)).first()
+            if record is None:
+                return {"status": False, "message": "没有该 chat_id 对应的记录！"}
+            # 更新第一条记录的字段
+            record.json_table2 = req.json_table2
+            db.add(record)  # 将修改的记录添加到会话中（可选，通常修改后 SQLAlchemy 会自动跟踪）
+    except Exception as e:
+        db.rollback()  # 回滚事务
+        return {"status": False, "message": f"Failed to update json_data_storage: {str(e)}"}
+    # 返回成功消息
+    return {"status": True, "message": "Successfully updated json_data_storage!"}
