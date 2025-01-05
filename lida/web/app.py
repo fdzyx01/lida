@@ -682,6 +682,9 @@ def get_all_tasks(
 
         # 查询所有任务并应用分页
         tasks = db.query(TaskManagement).offset(skip).limit(limit).all()
+
+        # 计算总的任务条数
+        total_tasks = db.query(TaskManagement).count()
         
         # 构建任务列表，确保使用正确的属性名
         task_list = [
@@ -697,7 +700,7 @@ def get_all_tasks(
         ]
 
         # 返回包含状态、任务列表和消息的字典
-        return {"status": True, "tasks": task_list, "message": "Successfully listed all tasks!"}
+        return {"status": True, "tasks": task_list, "total": total_tasks, "message": "Successfully listed all tasks!"}
 
     except Exception as exception_error:
         logging.error(f"Error fetching tasks: {str(exception_error)}")
@@ -725,6 +728,8 @@ def get_task_by_name(
         # 如果提供了 task_name 参数，则应用过滤
         if task_name:
             query = query.filter(TaskManagement.task_name.ilike(f"%{task_name}%"))
+        # 计算总的任务条数
+        total_tasks = query.count()
 
         # 应用分页参数
         paginated_tasks = query.offset(skip).limit(limit).all()
@@ -743,7 +748,7 @@ def get_task_by_name(
         ]
 
         # 返回包含状态、任务列表和消息的字典
-        return {"status": True, "tasks": task_list, "message": "Successfully listed name tasks!"}
+        return {"status": True, "tasks": task_list, "total": total_tasks, "message": "Successfully listed name tasks!"}
 
     except Exception as exception_error:
         logging.error(f"Error fetching tasks: {str(exception_error)}")
@@ -978,9 +983,11 @@ def update_goal_explanation(
         }
     
 # 根据chat_id查询出表中explanation字段为success的goal记录
-@api.get("/goals/getSuccessGoalsByChatId", response_model=List[dict])
+@api.get("/goals/getSuccessGoalsByChatId", response_model=dict)
 def get_success_goals_by_chat_id(
     chat_id: str,
+    skip: int = Query(0, description="Skip number of goals"),
+    limit: int = Query(10, description="Number of goals to return"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> List[dict]:
@@ -991,14 +998,16 @@ def get_success_goals_by_chat_id(
 
         logging.info(f"Received request to fetch success goals for chat_id={chat_id}")
 
-        # 查询与 chat_id 匹配且 explanation 为 'success' 的记录
-        goals = (
-            db.query(Goal)
-            .filter(Goal.chat_id == chat_id, Goal.explanation == "success")
-            .all()
-        )
+        # 构建查询基础
+        query = db.query(Goal).filter(Goal.chat_id == chat_id, Goal.explanation == "success")
 
-        logging.info(f"Found {len(goals)} success goals for chat_id={chat_id}")
+        # 计算总的任务条数
+        total_goals = query.count()
+
+        # 应用分页参数并获取分页后的目标
+        paginated_goals = query.offset(skip).limit(limit).all()
+
+        logging.info(f"Found {len(paginated_goals)} success goals for chat_id={chat_id} after applying pagination")
 
         # 构建返回的响应数据
         response_data = [
@@ -1016,10 +1025,16 @@ def get_success_goals_by_chat_id(
                 "create_time": goal.create_time.isoformat() if goal.create_time else None,
                 "update_time": goal.update_time.isoformat() if goal.update_time else None
             }
-            for goal in goals
+            for goal in paginated_goals
         ]
 
-        return response_data
+        # 返回包含状态、任务列表、总条数和消息的字典
+        return {
+            "status": True,
+            "goals": response_data,
+            "total": total_goals,
+            "message": "Successfully fetched success goals!"
+        }
 
     except HTTPException as http_error:
         logging.error(f"HTTP error for chat_id {chat_id}: {str(http_error)}")
