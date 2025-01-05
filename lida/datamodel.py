@@ -286,4 +286,14 @@ class TaskCreateRequest:
     task_name: str 
     task_details: str
     chat_id: str
+
+# 创建JsonDataStorage
+@dataclass
+class JsonDataStorageCreateRequest:
+    """A request for creating a new JsonDataStorage"""
+
+    chat_id: str 
+    json_table1: dict
+    json_table2: dict
+   
     

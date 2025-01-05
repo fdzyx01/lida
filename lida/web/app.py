@@ -18,11 +18,11 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from .auth import authenticate_user, ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token, create_user, get_current_user
-from .entity import SessionLocal, Chat, Goal, Explain, Evaluate, Edit, TaskManagement, User, Recommend
+from .entity import JsonDataStorage, SessionLocal, Chat, Goal, Explain, Evaluate, Edit, TaskManagement, User, Recommend
 from pydantic import BaseModel
 
 from .models import Token
-from ..datamodel import GoalWebRequest, SummaryUrlRequest, TaskCreateRequest, TextGenerationConfig, UploadUrl, VisualizeEditWebRequest, \
+from ..datamodel import GoalWebRequest, JsonDataStorageCreateRequest, SummaryUrlRequest, TaskCreateRequest, TextGenerationConfig, UploadUrl, VisualizeEditWebRequest, \
     VisualizeEvalWebRequest, VisualizeExplainWebRequest, VisualizeRecommendRequest, VisualizeRepairWebRequest, \
     VisualizeWebRequest, InfographicsRequest, VisualizeConclusionRequest, DescribeData, UserCreate, VisWebRequest
 from ..components import Manager
@@ -700,7 +700,6 @@ def get_all_tasks(
             "message": f"Error fetching tasks. {exception_error}"
         }
     
-
 # 根据名字查询任务
 @api.get("/tasks/getName", response_model=dict)
 def get_task_by_name(
@@ -794,6 +793,78 @@ def get_latest_id_by_chat_id(
             "status": False,
             "message": f"Error fetching latest goal.{exception_error}"
         }
+
+# 创建json_data_storage 两条json数据
+@api.post("/jsonDataStorage/create", response_model=dict)
+def create_json_data_storage(
+    req:JsonDataStorageCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    """Create a new JSON data storage record."""
+    
+    try:
+         # 验证输入参数
+        if not req.chat_id or not isinstance(req.chat_id, str):
+            raise ValueError("Invalid chat_id")
+        
+        if not req.json_table1 or not isinstance(req.json_table1, dict):
+            raise ValueError("Invalid json_table1")
+        
+        if not req.json_table2 or not isinstance(req.json_table2, dict):
+            raise ValueError("Invalid json_table2")
+
+        # 创建新的 JsonDataStorage 实例并填充数据
+        new_record = JsonDataStorage(
+            chat_id=req.chat_id,
+            json_table1=req.json_table1,
+            json_table2=req.json_table2
+        )
+
+        # 添加到数据库会话并提交
+        db.add(new_record)
+        db.commit()
+        db.refresh(new_record)
+
+        return {
+            "status": True,
+            "data": {
+                "id": new_record.id,  # 使用正确的字段名
+                "chat_id": new_record.chat_id,
+                "json_table1": new_record.json_table1,
+                "json_table2": new_record.json_table2,
+                "created_at": new_record.created_at,
+                "updated_at": new_record.updated_at
+            },
+            "message": "Successfully created jsonDataStorage record!"
+        }
+
+    except HTTPException as http_error:
+        raise http_error
+    except Exception as exception_error:
+        error_message = f"Error creating JsonDataStorage record: {str(exception_error)}"
+        logging.error(error_message)
+        return {
+            "status": False,
+            "message": error_message
+        }
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # 登录获取令牌
 @api.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)) -> dict:
