@@ -5,4 +5,4 @@ OLLAMA_DEFAULT_MODEL = "qwen2.5:14b-instruct-q6_K_ctx32k"       # 默认使用�
 OLLAMA_MAX_TOKENS = 4096                                        # 默认最大 Token 限制
 
 # mysql数据库
-DATABASE_URL = "mysql+pymysql://root:ICPC2021spring.@localhost/lida"
+DATABASE_URL = "mysql+pymysql://root:lida112233@152.136.172.125:38083/lida"

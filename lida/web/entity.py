@@ -27,10 +27,26 @@ class TimestampMixin:
     def before_update_listener(mapper, connection, target):
         target.update_time = datetime.utcnow()
 
+class MytimeStampMixin:
+
+    @declared_attr
+    def created_at(cls):
+        return Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    @declared_attr
+    def updated_at(cls):
+        return Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    @staticmethod
+    def before_update_listener(mapper, connection, target):
+        target.updated_at = datetime.utcnow()
+
 
 # 在所有继承TimestampMixin的类上注册before_update监听器
 event.listen(TimestampMixin, 'before_update', TimestampMixin.before_update_listener)
 
+# 在所有继承TimestampMixin的类上注册before_update监听器
+event.listen(MytimeStampMixin, 'before_update', MytimeStampMixin.before_update_listener)
 
 class Chat(TimestampMixin, Base):
     __tablename__ = "t_chat"
@@ -100,6 +116,30 @@ class User(TimestampMixin, Base):
     id = Column(BigInteger, primary_key=True, index=True, nullable=False, default=generate_unique_id)
     username = Column(String(50), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
+
+# 新增 TaskManagement 模型
+class TaskManagement(MytimeStampMixin, Base):
+    __tablename__ = "task_management"
+
+    task_id = Column(Integer, primary_key=True, autoincrement=True, comment='任务ID')
+    task_name = Column(String(255), nullable=False, comment='任务名称')
+    task_details = Column(Text, nullable=True, comment='任务详情')
+    # created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    # updated_at = Column(DateTime, nullable=True)
+    chat_id = Column(String(255), nullable=True, comment='ChatID')
+
+
+# 新增 JsonDataStorage 模型
+class JsonDataStorage(MytimeStampMixin, Base):
+    __tablename__ = "json_data_storage"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, comment='唯一ID')
+    chat_id = Column(String(255), nullable=False, comment='记录ID（如您提供的id字段）')
+    json_table1 = Column(JSON, nullable=False, comment='存储整个JSON对象')
+    json_table2 = Column(JSON, nullable=False, comment='存储整个JSON对象')
+    # created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    # updated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
 
 
 # 创建数据库表（如果表不存在）
