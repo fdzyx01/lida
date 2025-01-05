@@ -630,32 +630,38 @@ async def create_task(
     """Create a new task with the provided details."""
 
     try:
-        # 创建新的任务条目
-        db_task = TaskManagement(
-            task_name=req.task_name,
-            task_details=req.task_details,
-            chat_id=req.chat_id,
-        )
-        
-        # 添加到数据库会话并提交
-        db.add(db_task)
-        db.commit()
-        db.refresh(db_task)
+        with db.begin():
+            db_chat = Chat(user_id=current_user.id)
+            db.add(db_chat)
+            db.flush()
 
-        return {
-            "status": True,
-            "data": {
-                "task_id": db_task.task_id,  # 使用正确的字段名
-                "name": db_task.task_name,
-                "details": db_task.task_details,
-                "chat_id": db_task.chat_id,
-                "created_at": db_task.created_at,
-                "updated_at": db_task.updated_at
-            },
-            "message": "Successfully created task!"
-        }
+            # 创建新的任务条目
+            db_task = TaskManagement(
+                task_name=req.task_name,
+                task_details=req.task_details,
+                chat_id=db_chat.id, # 此处 chat_id 已经由数据库自动生成并赋值
+            )
+
+            
+            # 添加到数据库会话并提交
+            db.add(db_task)
+            db.flush()
+
+            return {
+                "status": True,
+                "data": {
+                    "task_id": db_task.task_id,  # 使用正确的字段名
+                    "name": db_task.task_name,
+                    "details": db_task.task_details,
+                    "chat_id": str(db_task.chat_id),
+                    "created_at": db_task.created_at,
+                    "updated_at": db_task.updated_at
+                },
+                "message": "Successfully created task!"
+            }
 
     except Exception as exception_error:
+        db.rollback()
         logging.error(f"Error creating task: {str(exception_error)}")
         return {
             "status": True,

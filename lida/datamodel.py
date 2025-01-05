@@ -285,7 +285,7 @@ class TaskCreateRequest:
 
     task_name: str 
     task_details: str
-    chat_id: str
+    # chat_id: str
 
 # 创建JsonDataStorage
 @dataclass
