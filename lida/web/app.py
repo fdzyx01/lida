@@ -1,13 +1,16 @@
+import csv
 from http.client import HTTPException
+import io
 import json
 import os
 import logging
 from datetime import timedelta
 from json import JSONDecodeError
+from turtle import pd
 from typing import Dict, List
 
 import requests
-from fastapi import FastAPI, UploadFile, Form, Depends, Query
+from fastapi import FastAPI, UploadFile, Form, Depends, Query, File, status
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -1044,7 +1047,79 @@ def get_success_goals_by_chat_id(
         logging.error(error_message)
         raise HTTPException(status_code=500, detail=error_message)
 
+# 解析csv文件数据  并且把解析的数据插入到 table1字段中
+@api.post("/jsonDataStorage/parseCsvData", response_model=dict)
+async def parse_csv_data_and_store(
+    chat_id: str = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    """Upload a CSV file and store its parsed data along with the chat_id in the database."""
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="User not authenticated")
 
+        # 确保文件是CSV格式
+        if not file.filename.endswith('.csv'):
+            raise HTTPException(status_code=400, detail="Invalid file format. Only CSV files are allowed.")
+
+        # 异步读取文件内容并创建一个 StringIO 对象
+        contents = await file.read()
+        csv_file = io.StringIO(contents.decode('utf-8'))
+
+        # 使用 DictReader 逐行解析 CSV 文件
+        reader = csv.DictReader(csv_file)
+        parsed_data = []
+        max_rows = 100  # 设置最大行数为100
+        row_count = 0
+
+        for row in reader:
+            if row_count >= max_rows:
+                break
+            parsed_row = {key: value for key, value in row.items()}
+            parsed_data.append(parsed_row)
+            row_count += 1
+
+        # 获取所有列名（即使只读取了部分行）
+        columns = reader.fieldnames if reader.fieldnames else []
+
+        # 构建返回的响应数据
+        response_data = {
+            "data": parsed_data,
+            "columns": columns  # 包含实际的列名
+        }
+
+        # 确保插入符合预期的数据结构
+        wrapped_parsed_data = {"data": parsed_data}
+
+       # 使用上下文管理器确保事务管理
+        try:
+            with db.begin():  # 使用上下文管理器自动管理事务
+                # 插入到数据库中
+                new_record = JsonDataStorage(
+                    chat_id=chat_id,
+                    json_table1=wrapped_parsed_data,  # 将解析的数据插入到 json_table1 字段
+                    json_table2={}  # 可以保持为空或根据需要插入其他数据
+                )
+                db.add(new_record)
+                db.flush()  # 刷新以获取自增ID和其他可能的默认值
+                db.refresh(new_record)  # 刷新实例以获取最新数据
+        except Exception as db_error:
+            error_message = f"Database error processing CSV file for chat_id {chat_id}: {str(db_error)}"
+            logging.error(error_message)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_message)
+
+        return response_data  # 直接返回字典，FastAPI 会自动将其转换为 JSON 响应
+
+    except HTTPException as http_error:
+        logging.error(f"HTTP error for chat_id {chat_id}: {str(http_error)}")
+        raise http_error
+    except Exception as e:
+        await db.rollback()  # 使用异步数据库操作（如果支持）
+        error_message = f"Error processing CSV file for chat_id {chat_id}: {str(e)}"
+        logging.error(error_message)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_message)
 
 # 登录获取令牌
 @api.post("/token")
