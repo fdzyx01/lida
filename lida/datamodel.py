@@ -1,6 +1,7 @@
 # from dataclasses import dataclass
 import base64
 from dataclasses import field
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 from llmx import TextGenerationConfig
@@ -117,6 +118,7 @@ class GoalWebRequest:
     )
     extra_hint_interest: str = ""
     n: int = 5
+    chat_id: str = ""
 
 
 @dataclass
@@ -129,12 +131,15 @@ class VisualizeWebRequest:
     textgen_config: Optional[TextGenerationConfig] = field(
         default_factory=TextGenerationConfig
     )
+    chat_id: str = ""
 
 
 @dataclass
 class VisualizeRecommendRequest:
     """A Visualize Recommendation Request"""
 
+    chat_id: str
+    goal_id: str
     summary: Summary
     code: str
     library: str = "seaborn"
@@ -158,6 +163,8 @@ class VisualizeConclusionRequest:
 class VisualizeEditWebRequest:
     """A Visualize Edit Web Request"""
 
+    chat_id: str
+    goal_id: str
     summary: Summary
     code: str
     instructions: Union[str, List[str]]
@@ -185,6 +192,8 @@ class VisualizeRepairWebRequest:
 class VisualizeExplainWebRequest:
     """A Visualize Explain Web Request"""
 
+    chat_id: str
+    goal_id: str
     code: str
     library: str = "seaborn"
     textgen_config: Optional[TextGenerationConfig] = field(
@@ -196,6 +205,7 @@ class VisualizeExplainWebRequest:
 class VisualizeEvalWebRequest:
     """A Visualize Eval Web Request"""
 
+    chat_id: str
     code: str
     goal: Goal
     library: str = "seaborn"
@@ -251,3 +261,48 @@ class InfographicsRequest:
     n: int = 1
     style_prompt: Union[str, List[str]] = ""
     # return_pil: bool = False
+
+
+@dataclass
+class UserCreate:
+    """A request for register"""
+
+    username: str
+    password: str
+
+
+@dataclass
+class VisWebRequest:
+    """A Visualize Web Request"""
+
+    summary: Summary
+    goal_id: str
+
+# 创建任务
+@dataclass
+class TaskCreateRequest:
+    """A request for creating a new task"""
+
+    task_name: str 
+    task_details: str
+    # chat_id: str
+
+# 创建JsonDataStorage
+@dataclass
+class JsonDataStorageCreateRequest:
+    """A request for creating a new JsonDataStorage"""
+
+    chat_id: str 
+    json_table1: dict
+    json_table2: dict
+
+# 更新Goal表的Explanation字段
+@dataclass
+class GoalUpdateExplanationRequest:
+    id: str
+    chat_id: str
+# 更新Task表的TaskName字段
+@dataclass
+class TaskNameUpdateRequest:
+    chat_id: str
+    new_task_name: str

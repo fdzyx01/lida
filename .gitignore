@@ -16,6 +16,7 @@ data
 .DS_Store
 experiments/data
 .azure
+/lidacxf/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -45,7 +46,7 @@ share/python-wheels/
 *.egg
 MANIFEST
 .env
-
+/ourlida/
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
