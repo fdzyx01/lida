@@ -985,12 +985,10 @@ def update_goal_explanation(
             "message": error_message
         }
     
-# 根据chat_id查询出表中explanation字段为success的goal记录
+# 根据chat_id查询出表中explanation字段为success的goal记录 并且查询 t_chat表中的相关信息
 @api.get("/goals/getSuccessGoalsByChatId", response_model=dict)
 def get_success_goals_by_chat_id(
     chat_id: str,
-    skip: int = Query(0, description="Skip number of goals"),
-    limit: int = Query(10, description="Number of goals to return"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> List[dict]:
@@ -1001,41 +999,40 @@ def get_success_goals_by_chat_id(
 
         logging.info(f"Received request to fetch success goals for chat_id={chat_id}")
 
-        # 构建查询基础
-        query = db.query(Goal).filter(Goal.chat_id == chat_id, Goal.explanation == "success")
+        # 查询 Chat 表中的信息
+        chat_info = db.query(Chat).filter(Chat.id == chat_id).first()
+        if not chat_info:
+            raise HTTPException(status_code=404, detail=f"Chat with id {chat_id} not found")
 
-        # 计算总的任务条数
-        total_goals = query.count()
+        # 构建查询基础并获取所有目标
+        goals = db.query(Goal).filter(Goal.chat_id == chat_id, Goal.explanation == "success").all()
 
-        # 应用分页参数并获取分页后的目标
-        paginated_goals = query.offset(skip).limit(limit).all()
-
-        logging.info(f"Found {len(paginated_goals)} success goals for chat_id={chat_id} after applying pagination")
-
+        logging.info(f"Found {len(goals)} success goals for chat_id={chat_id}")
+        
         # 构建返回的响应数据
         response_data = [
             {
-                "id": goal.id,
-                "chat_id": goal.chat_id,
-                "index": goal.index,
-                "question": goal.question,
-                "visualization": goal.visualization,
-                "rationale": goal.rationale,
-                "is_auto": bool(goal.is_auto),  # Assuming is_auto is stored as integer in the database
-                "library": goal.library,
-                "code": goal.code,
-                "explanation": goal.explanation,
-                "create_time": goal.create_time.isoformat() if goal.create_time else None,
-                "update_time": goal.update_time.isoformat() if goal.update_time else None
+                "goal": {
+                    "index": goal.index,
+                    "question": goal.question,
+                    "visualization": goal.visualization,
+                    "rationale": goal.rationale,
+                },
+                "chat_info": {
+                    "name": chat_info.name,
+                    "data_filename": chat_info.data_filename,
+                    "dataset_description": chat_info.dataset_description,
+                    "field_names": chat_info.field_names,
+                    "fields": chat_info.fields,
+                }
             }
-            for goal in paginated_goals
+            for goal in goals
         ]
 
         # 返回包含状态、任务列表、总条数和消息的字典
         return {
             "status": True,
-            "goals": response_data,
-            "total": total_goals,
+            "goals_with_chat_info": response_data,
             "message": "Successfully fetched success goals!"
         }
 
