@@ -1221,3 +1221,45 @@ async def update_json_data_storage(
         return {"status": False, "message": f"Failed to update json_data_storage: {str(e)}"}
     # 返回成功消息
     return {"status": True, "message": "Successfully updated json_data_storage!"}
+
+
+
+@api.get("/select_table_and_fields_by_chatid")
+async def select_table_and_fields_by_chatid(
+    chat_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        # 查询 chat
+        chat = db.query(Chat).filter(Chat.id == str(chat_id)).first()
+        chat_data = None
+        if chat:
+            # 处理 chat.fields 和 chat.field_names 为 None 的情况
+            chat_fields = chat.fields if chat.fields is not None else []
+            chat_field_names = chat.field_names if chat.field_names is not None else []
+            chat_data = {
+                "field_names": chat_field_names,
+                "fields": chat_fields
+            }
+
+        # 查询 jsonData
+        jsonData = db.query(JsonDataStorage).filter(JsonDataStorage.chat_id == str(chat_id)).first()
+        json_data = None
+        if jsonData:
+            # 处理 jsonData.json_table1 为 None 的情况
+            json_table1 = jsonData.json_table1 if jsonData.json_table1 is not None else {}
+            json_data = {
+                "json_table1": json_table1
+            }
+
+        # 返回结果
+        return {
+            "status": True,
+            "data": {
+                "chat": chat_data,
+                "jsonData": json_data
+            }
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Failed to select table and fields: {str(e)}"}
