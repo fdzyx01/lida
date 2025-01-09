@@ -25,7 +25,7 @@ from .entity import JsonDataStorage, SessionLocal, Chat, Goal, Explain, Evaluate
 from pydantic import BaseModel
 
 from .models import Token
-from ..datamodel import GoalUpdateExplanationRequest, GoalWebRequest, JsonDataStorageCreateRequest, SummaryUrlRequest, TaskCreateRequest, TaskNameUpdateRequest, TextGenerationConfig, UploadUrl, VisualizeEditWebRequest, \
+from ..datamodel import ChatUpdateRequest, GoalUpdateExplanationRequest, GoalWebRequest, JsonDataStorageCreateRequest, SummaryUrlRequest, TaskCreateRequest, TaskNameUpdateRequest, TextGenerationConfig, UploadUrl, VisualizeEditWebRequest, \
     VisualizeEvalWebRequest, VisualizeExplainWebRequest, VisualizeRecommendRequest, VisualizeRepairWebRequest, \
     VisualizeWebRequest, InfographicsRequest, VisualizeConclusionRequest, DescribeData, UserCreate, VisWebRequest
 from ..components import Manager
@@ -1043,6 +1043,46 @@ def get_success_goals_by_chat_id(
         error_message = f"Error fetching success goals for chat_id {chat_id}: {str(exception_error)}"
         logging.error(error_message)
         raise HTTPException(status_code=500, detail=error_message)
+
+# 根据chat_id去修改t_chat表中的fields字段
+@api.put("/chats/updateByChatId", response_model=dict)
+def update_chat_by_chat_id(
+    chat_update_request: ChatUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    """Update the fields field for a specific chat record based on chat_id."""
+    
+    if not current_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not authenticated")
+
+    chat_id = chat_update_request.chat_id
+    fields_update = chat_update_request.fields
+
+    # 查询指定 chat_id 的 Chat 记录
+    chat = db.query(Chat).filter(Chat.id == chat_id).first()
+    if not chat:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Chat with id {chat_id} not found")
+
+    try:
+        # 更新 Chat 记录中的 'fields' 字段
+        chat.fields = fields_update
+
+        # 提交更改
+        db.commit()
+        db.refresh(chat)
+        
+    except Exception as db_error:
+        error_message = f"Database error updating fields for chat with id {chat_id}: {str(db_error)}"
+        logging.error(error_message)
+        db.rollback()  # 回滚事务以保持数据库一致性
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_message
+        )
+
+    return {"status": "success", "message": "Fields updated successfully"}
+
 
 # 解析csv文件数据  并且把解析的数据插入到 table1字段中
 @api.post("/jsonDataStorage/parseCsvData", response_model=dict)

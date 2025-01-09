@@ -306,3 +306,7 @@ class GoalUpdateExplanationRequest:
 class TaskNameUpdateRequest:
     chat_id: str
     new_task_name: str
+@dataclass
+class ChatUpdateRequest:
+    chat_id: str 
+    fields: dict
