@@ -458,6 +458,7 @@ async def upload_file(file: UploadFile = Form(...),
             db_chat.dataset_description = summary['dataset_description']
             db_chat.field_names = {"field_names": summary['field_names']}
             db_chat.fields = {"fields": summary['fields']}
+            db_chat.name = summary['name']
         else:
             db_chat = Chat(user_id=current_user.id,
                            name=summary['name'],
