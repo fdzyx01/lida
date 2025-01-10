@@ -1019,22 +1019,20 @@ def get_success_goals_by_chat_id(
                     "visualization": goal.visualization,
                     "rationale": goal.rationale,
                 },
-                "chat_info": {
-                    "name": chat_info.name,
-                    "data_filename": chat_info.data_filename,
-                    "dataset_description": chat_info.dataset_description,
-                    "field_names": chat_info.field_names,
-                    "fields": chat_info.fields,
-                }
+                
+                "name": chat_info.name,
+                "file_name": chat_info.data_filename,
+                "dataset_description": chat_info.dataset_description,
+                "field_names": chat_info.field_names,
+                "fields": chat_info.fields,
+                
             }
             for goal in goals
         ]
 
-        # 返回包含状态、任务列表、总条数和消息的字典
+        # 前端不要status和message
         return {
-            "status": True,
-            "goals_with_chat_info": response_data,
-            "message": "Successfully fetched success goals!"
+            "summary": response_data,
         }
 
     except HTTPException as http_error:
