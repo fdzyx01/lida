@@ -6,7 +6,6 @@ import os
 import logging
 from datetime import timedelta
 from json import JSONDecodeError
-from turtle import pd
 from typing import Dict, List
 
 import requests
