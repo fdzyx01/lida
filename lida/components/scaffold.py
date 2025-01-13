@@ -1,5 +1,5 @@
 from dataclasses import asdict
-from lida.config import CN_PATH
+
 from lida.datamodel import Goal
 import re
 
@@ -33,12 +33,10 @@ class ChartScaffold(object):
                 template = \
                 f"""
 import matplotlib.pyplot as plt
-import matplotlib.font_manager as font_manager # must import this library functions
 import pandas as pd
-from lida.config import CN_PATH
 <imports>
-font_properties = font_manager.FontProperties(fname=CN_PATH)
-plt.rcParams['font.family'] = font_properties.get_name()
+plt.rcParams['font.sans-serif'] = ['SimHei']
+plt.rcParams['axes.unicode_minus'] = False
 # plan -
 def plot(data: pd.DataFrame):
     <stub> # only modify this section
@@ -68,12 +66,10 @@ chart = plot(data) # data already contains the data to be plotted. Always includ
                 f"""
 import seaborn as sns
 import pandas as pd
-import matplotlib.font_manager as font_manager # must import this library functions
 import matplotlib.pyplot as plt
-from lida.config import CN_PATH
 <imports>
-font_properties = font_manager.FontProperties(fname=CN_PATH)
-plt.rcParams['font.family'] = font_properties.get_name()
+plt.rcParams['font.sans-serif'] = ['SimHei']
+plt.rcParams['axes.unicode_minus'] = False
 # solution plan
 # i.  ..
 def plot(data: pd.DataFrame):
@@ -109,13 +105,10 @@ chart = plot(data) # data already contains the data to be plotted. Always includ
                 template = \
                 f"""
 import plotnine as p9
-from lida.config import CN_PATH
-import matplotlib.font_manager as fm
 <imports>
 def plot(data: pd.DataFrame):
-    prop = fm.FontProperties(fname=CN_PATH)
     chart = <stub>
-    chart = chart + p9.theme(text=p9.element_text(fontproperties=prop))
+    chart = chart + p9.theme(text=p9.element_text(family='SimHei'))
     return chart
 
 chart = plot(data) # data already contains the data to be plotted. Always include this line. No additional code beyond this line.. """
