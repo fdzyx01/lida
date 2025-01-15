@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import traceback
 
 from llmx import llm, providers
-from sqlalchemy import delete
+from sqlalchemy import delete, desc
 from sqlalchemy.orm import Session
 
 from .auth import authenticate_user, ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token, create_user, get_current_user
@@ -683,11 +683,12 @@ def get_all_tasks(
     
     try:
 
-        # 查询所有任务并应用分页
-        tasks = db.query(TaskManagement).offset(skip).limit(limit).all()
+        # 查询所有任务并应用分页和排序
+        tasks_query = db.query(TaskManagement).order_by(desc(TaskManagement.created_at))
+        tasks = tasks_query.offset(skip).limit(limit).all()
 
-        # 计算总的任务条数
-        total_tasks = db.query(TaskManagement).count()
+        # 计算总的任务条数（不带分页）
+        total_tasks = tasks_query.count()
         
         # 构建任务列表，确保使用正确的属性名
         task_list = [
