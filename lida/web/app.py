@@ -1302,3 +1302,19 @@ async def select_table_and_fields_by_chatid(
         }
     except Exception as e:
         return {"status": False, "message": f"Failed to select table and fields: {str(e)}"}
+    
+
+@api.get("/ishava_task_byName")
+async def ishava_task_byName(
+    task_name: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        task_management = db.query(TaskManagement).filter(TaskManagement.task_name == str(task_name)).first()
+        if task_management is None:
+            return {"status": False, "data": {"message": "任务名称不存在！", "task_management": None}}
+        else:
+            return {"status": True,  "data": {"message": "任务名称已存在！", "task_management": task_management}}
+    except Exception as e:
+        return {"status": False, "message": f"Failed to select table and fields: {str(e)}"}
