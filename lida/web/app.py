@@ -92,7 +92,10 @@ async def visualize_data(req: VisualizeWebRequest,
         print("found charts: ", len(charts), " for goal: ")
         image_base64 = charts[0].raster
         image_url = f'data:image/jpeg;base64,{image_base64}'
-        content = picture_result_generate(image_url).content
+        try:
+            content = picture_result_generate(image_url).content
+        except:
+            content = "error"
         charts[0].picture_result = content
         # print(content)
         if len(charts) == 0:
@@ -147,7 +150,10 @@ async def edit_visualization(req: VisualizeEditWebRequest,
         # charts = [asdict(chart) for chart in charts]
         image_base64 = charts[0].raster
         image_url = f'data:image/jpeg;base64,{image_base64}'
-        content = picture_result_generate(image_url).content
+        try:
+            content = picture_result_generate(image_url).content
+        except:
+            content = "error"
         charts[0].picture_result = content
         if len(charts) == 0:
             return {"status": False, "message": "No charts generated"}
