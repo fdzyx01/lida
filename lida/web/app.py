@@ -27,7 +27,7 @@ from .models import Token
 from ..datamodel import ChatUpdateRequest, GoalUpdateExplanationRequest, GoalWebRequest, JsonDataStorageCreateRequest, SummaryUrlRequest, TaskCreateRequest, TaskNameUpdateRequest, TextGenerationConfig, UploadUrl, VisualizeEditWebRequest, \
     VisualizeEvalWebRequest, VisualizeExplainWebRequest, VisualizeRecommendRequest, VisualizeRepairWebRequest, \
     VisualizeWebRequest, InfographicsRequest, VisualizeConclusionRequest, DescribeData, UserCreate, VisWebRequest
-from ..components import Manager
+from ..components import Manager, picture_result_generate
 from lida.ollamaTextGenerator import OllamaTextGenerator
 
 # instantiate model and generator
@@ -90,6 +90,11 @@ async def visualize_data(req: VisualizeWebRequest,
             textgen_config=req.textgen_config if req.textgen_config else TextGenerationConfig(),
             library=req.library, return_error=True)
         print("found charts: ", len(charts), " for goal: ")
+        image_base64 = charts[0].raster
+        image_url = f'data:image/jpeg;base64,{image_base64}'
+        content = picture_result_generate(image_url).content
+        charts[0].picture_result = content
+        # print(content)
         if len(charts) == 0:
             return {"status": False, "message": "No charts generated"}
 
@@ -140,6 +145,10 @@ async def edit_visualization(req: VisualizeEditWebRequest,
             library=req.library, return_error=True)
 
         # charts = [asdict(chart) for chart in charts]
+        image_base64 = charts[0].raster
+        image_url = f'data:image/jpeg;base64,{image_base64}'
+        content = picture_result_generate(image_url).content
+        charts[0].picture_result = content
         if len(charts) == 0:
             return {"status": False, "message": "No charts generated"}
 

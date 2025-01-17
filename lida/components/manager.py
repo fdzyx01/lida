@@ -49,6 +49,7 @@ class Manager(object):
         self.data = None
         self.infographer = None
         self.persona = PersonaExplorer()
+        self.error = None
 
     def conclusion(self, code,
                    goal: Goal,
@@ -255,6 +256,7 @@ class Manager(object):
             library=library,
             return_error=return_error,
         )
+        self.error = charts[0].error["message"] if charts[0].error else None
         return charts
 
     def vis(
@@ -271,6 +273,7 @@ class Manager(object):
             library=library,
             return_error=return_error,
         )
+        self.error = charts[0].error["message"] if charts[0].error else None
         return charts
 
     def execute(
@@ -420,6 +423,7 @@ class Manager(object):
             goal=goal,
             textgen_config=textgen_config,
             text_gen=self.text_gen,
+            error=self.error,
             library=library,
         )
 
