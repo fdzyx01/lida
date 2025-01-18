@@ -8,4 +8,4 @@ OLLAMA_MAX_TOKENS = 4096                                        # 默认最大 T
 DATABASE_URL = "mysql+pymysql://root:lida112233@152.136.172.125:38083/lida"
 
 # GLM_V4_Flash的API Key
-GLM_API_KEY = ""
+GLM_API_KEY = "8e931b6c08d04f45b02ff8d72e5203fb.x4F58kmFb4QFXsMf"

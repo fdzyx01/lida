@@ -6,7 +6,7 @@ import os
 import logging
 from datetime import timedelta
 from json import JSONDecodeError
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import requests
 from fastapi import FastAPI, UploadFile, Form, Depends, Query, File, status
@@ -111,10 +111,15 @@ async def visualize_data(req: VisualizeWebRequest,
                            rationale=req.goal.rationale,
                            is_auto=0,
                            library=req.library,
-                           code=charts["code"])
+                           code=charts["code"],
+                           raster=charts[0].raster,
+                           picture_result=charts[0].picture_result 
+                           )
         else:
             db_goal.library = req.library
             db_goal.code = charts[0].code
+            db_goal.raster = charts[0].raster
+            db_goal.picture_result = charts[0].picture_result
         db.commit()
         db.refresh(db_goal)
 
@@ -126,6 +131,34 @@ async def visualize_data(req: VisualizeWebRequest,
         logger.error(f"Error generating visualization goals: {str(exception_error)}")
         return {"status": False,
                 "message": f"Error generating visualization goals. {str(exception_error)}"}
+
+class VisualizeUpdatePictureInput(BaseModel):
+    chat_id: str
+    goal_id: str
+    raster: Optional[str] = None
+    picture_result: Optional[str] = None
+
+@api.post("/visualize/update_picture")
+async def update_picture(req: VisualizeUpdatePictureInput,
+                             db: Session = Depends(get_db),
+                             current_user: User = Depends(get_current_user)) -> dict:
+    try:
+        db_goal = db.query(Goal).filter(Goal.chat_id == req.chat_id, Goal.id == req.goal_id).first()
+        if db_goal is None:
+            return {"status": False,
+                    "message": "Goal not found with the given chat_id and question"}
+        if req.raster is not None:
+            db_goal.raster = req.raster
+        if req.picture_result is not None:
+            db_goal.picture_result = req.picture_result
+        db.commit()
+        db.refresh(db_goal)
+        return {"status": True,
+                "message": "Successfully updated picture."}
+    except Exception as exception_error:
+        logger.error(f"Error updating picture: {str(exception_error)}")
+        return {"status": False,
+                "message": f"Error updating picture. {str(exception_error)}"}
 
 
 @api.post("/visualize/edit")
