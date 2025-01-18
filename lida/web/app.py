@@ -987,6 +987,7 @@ def update_goal_explanation(
         }
     
 # 根据chat_id查询出表中explanation字段为success的goal记录 并且查询 t_chat表中的相关信息
+# 要求修改为：在之前的基础上返回表新增的raster和picture字段
 @api.get("/goals/getSuccessGoalsByChatId", response_model=dict)
 def get_success_goals_by_chat_id(
     chat_id: str,
@@ -1018,6 +1019,8 @@ def get_success_goals_by_chat_id(
                     "question": goal.question,
                     "visualization": goal.visualization,
                     "rationale": goal.rationale,
+                    "raster": goal.raster,
+                    "picture_result": goal.picture_result,
                 },
                 
                 "name": chat_info.name,
