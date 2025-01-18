@@ -75,6 +75,8 @@ class Goal(TimestampMixin, Base):
     library = Column(String(50), nullable=True)
     code = Column(Text, nullable=True)
     explanation = Column(String(255), nullable=True)
+    raster = Column(Text, nullable=True)
+    picture_result = Column(JSON, nullable=True)
     
 
 class Edit(TimestampMixin, Base):
