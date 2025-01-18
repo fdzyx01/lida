@@ -6,6 +6,7 @@ import os
 import logging
 from datetime import timedelta
 from json import JSONDecodeError
+import select
 from turtle import pd
 from typing import Dict, List
 
@@ -986,7 +987,7 @@ def update_goal_explanation(
             "message": error_message
         }
     
-# 根据chat_id查询出表中explanation字段为success的goal记录 并且查询 t_chat表中的相关信息
+# 修改接口根据chat_id查explanation字段为success的记录,添加查询chat表记录
 # 要求修改为：在之前的基础上返回表新增的raster和picture字段
 @api.get("/goals/getSuccessGoalsByChatId", response_model=dict)
 def get_success_goals_by_chat_id(
@@ -1160,6 +1161,45 @@ async def parse_csv_data_and_store(
         logging.error(error_message)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_message)
 
+# 根据goal_id和chat_id去查询goal表中的raster和picture_result字段
+@api.get("/goals/getRasterAndPictureByGoalIdAndChatId", response_model=dict)
+def get_raster_and_picture_by_goal_id_and_chat_id(
+    goal_id: str,
+    chat_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) ->dict:
+    try:
+        if not current_user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not authenticated")
+        
+        logging.info(f"Received request to fetch goal details for goal_id={goal_id}, chat_id={chat_id}")
+
+        # 查询指定 goal_id 和 chat_id 的 Goal 记录
+        goal = db.query(Goal).filter(Goal.chat_id == chat_id, Goal.id == goal_id).first()
+
+        if not goal:
+            raise HTTPException(status_code=404, detail=f"Goal with id {goal_id} not found for chat_id {chat_id}")
+
+        logging.info(f"Found goal details for goal_id={goal_id}, chat_id={chat_id}")
+
+        # 构建返回的响应数据
+        response_data = {
+            "raster": goal.raster,
+            "picture_result": goal.picture_result,
+        }
+
+        return response_data
+
+    except HTTPException as http_error:
+        logging.error(f"HTTP error for goal_id {goal_id}, chat_id {chat_id}: {str(http_error)}")
+        raise http_error
+    except Exception as exception_error:
+        error_message = f"Error fetching goal details for goal_id {goal_id}, chat_id {chat_id}: {str(exception_error)}"
+        logging.error(error_message)
+        raise HTTPException(status_code=500, detail=error_message)
+    
+    
 # 登录获取令牌
 @api.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)) -> dict:
